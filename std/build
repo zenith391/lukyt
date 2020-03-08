@@ -2,6 +2,7 @@
 export JAVA_COMPILE="/usr/lib/jvm/java-8-openjdk-amd64/bin/javac -Xlint:-options -source 1.2 -target 1.2"
 $JAVA_COMPILE java/lang/System.java
 $JAVA_COMPILE java/lang/Object.java
+$JAVA_COMPILE java/lang/StringBuffer.java
 $JAVA_COMPILE java/lang/String.java
 $JAVA_COMPILE java/io/PrintStream.java
 $JAVA_COMPILE java/io/ConsolePrintStream.java

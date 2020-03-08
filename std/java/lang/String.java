@@ -1,7 +1,7 @@
 package java.lang;
 
 public class String {
-	public char[] chars; // not Unicode-proof
+	private char[] chars; // not Unicode-proof
 
 	public String(char[] chars) {
 		this.chars = chars;
@@ -9,5 +9,9 @@ public class String {
 
 	public int length() {
 		return chars.length;
+	}
+
+	public char[] toCharArray() {
+		return chars;
 	}
 }

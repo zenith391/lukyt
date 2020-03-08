@@ -57,7 +57,9 @@ function lib:executeMethod(class, method, parameters)
 		for k, v in ipairs(parameters) do
 			frame.localVariables[k] = v
 		end
-		while self:execute(class, code) do
+		local ret = true
+		while ret == true do
+			ret = self:execute(class, code)
 			self.pc = self.pc + 1
 		end
 		if self:operandStackDepth() ~= 1 then
@@ -65,6 +67,9 @@ function lib:executeMethod(class, method, parameters)
 		end
 		self.pc = self:popOperand()[2]
 		self:popFrame()
+		if ret ~= false and self.currentFrame then
+			self:pushOperand(ret)
+		end
 	end
 end
 
@@ -87,6 +92,8 @@ local function findMethod(class, name, desc)
 	if class.superClass then
 		local method = findMethod(class.superClass, name, desc)
 		return method, class.superClass
+	else
+		error("could not find: " .. name .. " with descriptor " .. desc)
 	end
 end
 
@@ -133,13 +140,15 @@ function lib:execute(class, code)
 			printDebug("ldc \"" .. text .. "\"")
 			local objectClass, err = classLoader.loadClass("java/lang/String", true)
 			if not objectClass then
-				error("could not import " .. classPath .. ": " .. err)
+				error("could not import java/lang/String !!! " .. err)
 			end
 			local array = {}
 			for i=1, #text do
 				table.insert(array, types.new("char", string.byte(text:sub(i,i))))
 			end
-			local object = self:instantiateClass(objectClass, {types.referenceForArray(array)})
+			local object = self:instantiateClass(objectClass, {types.referenceForArray(array)}, true)
+			print("LDC " .. object[2].type)
+			print("LDC2 " .. object[2].object["chars"][2].array[1][2])
 			self:pushOperand(object)
 		end
 	end
@@ -157,6 +166,21 @@ function lib:execute(class, code)
 		end
 		-- aload_0 doesn't have an if here as "idx" is by default set to 0
 		self:pushOperand(self.currentFrame.localVariables[idx+1])
+	end
+	if op == 0x3a or op == 0x4b or op == 0x4c or op == 0x4d or op == 0x4e then -- astore and astore_<n>
+		local idx = 0
+		if op == 0x3a then
+			self.pc = self.pc + 1
+			idx = code[self.pc]
+		elseif op == 0x4c then -- aload_1
+			idx = 1
+		elseif op == 0x4d then -- aload_2
+			idx = 2
+		elseif op == 0x4e then -- aload_3
+			idx = 3
+		end
+		-- aload_0 doesn't have an if here as "idx" is by default set to 0
+		self.currentFrame.localVariables[idx+1] = self:popOperand()
 	end
 	if op == 0x59 then -- dup
 		local operand = self:popOperand()
@@ -178,6 +202,12 @@ function lib:execute(class, code)
 		end
 		local long = math.floor(operand)
 		self:pushOperand(types.new("long", long))
+	end
+	if op == 0xb0 then -- areturn
+		local ref = self:popOperand()
+		print(self:operandStackDepth())
+		printDebug("Reference return from method")
+		return ref
 	end
 	if op == 0xb1 then -- return
 		printDebug("Void return from method")
@@ -223,6 +253,24 @@ function lib:execute(class, code)
 		field.staticValue = self:popOperand()
 		self.pc = self.pc + 2
 	end
+	if op == 0xb4 then -- getfield
+		local index = (code[self.pc+1] << 8) | code[self.pc+2]
+		local objectRef = self:popOperand()
+		local nameAndTypeIndex = class.constantPool[index].nameAndTypeIndex
+		local nat = class.constantPool[nameAndTypeIndex]
+		local fieldClass = objectRef[2].class[2].class
+		printDebug("getfield " .. nat.name.text .. " on " .. fieldClass.name)
+		local field = nil
+		for k, v in pairs(fieldClass.fields) do
+			if v.name == nat.name.text then
+				field = v
+				break
+			end
+		end
+		print(objectRef[2].object[field.name][2].type)
+		self:pushOperand(objectRef[2].object[field.name])
+		self.pc = self.pc + 2
+	end
 	if op == 0xb5 then -- putfield
 		local index = (code[self.pc+1] << 8) | code[self.pc+2]
 		local value = self:popOperand()
@@ -245,7 +293,7 @@ function lib:execute(class, code)
 		local index = (code[self.pc+1] << 8) | code[self.pc+2]
 		local nameAndTypeIndex = class.constantPool[index].nameAndTypeIndex
 		local nat = class.constantPool[nameAndTypeIndex]
-		printDebug("invokevirtual " .. tostring(nat.name.text))
+		printDebug("invokevirtual " .. tostring(nat.name.text) .. tostring(nat.descriptor.text))
 
 		-- temporary / TODO use descriptors
 		local desc = types.readMethodDescriptor(nat.descriptor.text)
@@ -254,6 +302,7 @@ function lib:execute(class, code)
 		for i=1, argsCount do
 			table.insert(args, self:popOperand())
 		end
+		print(self:operandStackDepth())
 		local ref = self:popOperand()
 		table.insert(args, ref)
 		reverse(args)
@@ -265,9 +314,26 @@ function lib:execute(class, code)
 	if op == 0xb7 then -- invokespecial
 		local index = (code[self.pc+1] << 8) | code[self.pc+2]
 		local nameAndTypeIndex = class.constantPool[index].nameAndTypeIndex
-		printDebug("invokespecial " .. tostring(class.constantPool[nameAndTypeIndex].name.text))
-		local objectRef = self:popOperand()
-		-- TODO
+		local nat = class.constantPool[nameAndTypeIndex]
+		printDebug("invokespecial " .. tostring(nat.name.text) .. tostring(nat.descriptor.text))
+
+		-- temporary / TODO use descriptors
+		local desc = types.readMethodDescriptor(nat.descriptor.text)
+		local argsCount = #desc.params
+		local args = {}
+		for i=1, argsCount do
+			table.insert(args, self:popOperand())
+		end
+		local ref = self:popOperand()
+		table.insert(args, ref)
+		reverse(args)
+		local classPath = class.constantPool[index].class.name.text
+		local cl, err = classLoader.loadClass(classPath, true)
+		if not cl then
+			error("could not import " .. classPath .. ": " .. err)
+		end
+		local method, methodClass = findMethod(cl, nat.name.text, nat.descriptor.text)
+		self:executeMethod(methodClass, method, args)
 		self.pc = self.pc + 2
 	end
 	if op == 0xbb then -- new
@@ -276,22 +342,35 @@ function lib:execute(class, code)
 		printDebug("new " .. classPath)
 		local objectClass, err = classLoader.loadClass(classPath, true)
 		if not objectClass then
-			error("could not import " .. classPath .. ": " .. err)
+			error("could not import " .. classPath .. ": " .. tostring(err))
 		end
-		local object = self:instantiateClass(objectClass)
+		local object = self:instantiateClass(objectClass, {}, false)
 		self:pushOperand(object)
 		self.pc = self.pc + 2
+	end
+	if op == 0xbc then -- newarray
+		local atype = code[self.pc + 1]
+		local count = self:popOperand()[2]
+		self:pushOperand(types.referenceForArray({}))
+		self.pc = self.pc + 1
+	end
+	if op == 0xbe then -- arraylength
+		local arr = self:popOperand()
+		self:pushOperand(types.new("int", #arr[2].array))
 	end
 	return true
 end
 
-function lib:instantiateClass(class, parameters)
+function lib:instantiateClass(class, parameters, doInit)
 	local classReference = types.referenceForClass(class)
 	local object = types.new("reference", {
 		type = "object",
-		object = {}, -- TODO init fields
+		object = {},
 		class = classReference
 	})
+	for k, v in pairs(class.fields) do
+		object[2].object[v.name] = types.nullReference()
+	end
 	local init = nil
 	for _,v in pairs(class.methods) do
 		if v.name == "<init>" then
@@ -299,7 +378,7 @@ function lib:instantiateClass(class, parameters)
 		end
 	end
 
-	if init then
+	if doInit and init then
 		printDebug("calling <init> on object (" .. class.name .. ")")
 		local params = {object}
 		if parameters then

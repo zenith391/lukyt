@@ -5,8 +5,8 @@ local class = require("class")
 local types = require("type")
 
 function classLoader.loadClass(path, init)
-	local cl = classLoader.loadExternalClass("std/" .. path .. ".class")
-	if init and not initedClasses[cl] then
+	local cl, err = classLoader.loadExternalClass("std/" .. path .. ".class")
+	if cl and init and not initedClasses[cl] then
 		initedClasses[cl] = true
 		local clInit
 		for _,v in pairs(cl.methods) do
@@ -19,7 +19,7 @@ function classLoader.loadClass(path, init)
 			mainThread:executeMethod(cl, clInit, {classReference})
 		end
 	end
-	return cl
+	return cl, err
 end
 
 function classLoader.loadExternalClass(path)

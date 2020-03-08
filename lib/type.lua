@@ -80,19 +80,21 @@ function lib.readFieldDescriptor(descriptor)
 			component = component
 		}, 1 + cpSubIndex
 	end
-	error("unknown type " .. t)
+	error("unknown type: '" .. t .. "'")
 end
 
 function lib.readMethodDescriptor(descriptor)
 	local parameters = {}
 	local endParam = descriptor:find(")")
 	local paramDesc = descriptor:sub(2, endParam-1)
-	while true do
-		local param, subIndex = lib.readFieldDescriptor(paramDesc)
-		table.insert(parameters, param)
-		paramDesc = paramDesc:sub(subIndex)
-		if paramDesc:len() == 0 then
-			break
+	if paramDesc:len() > 0 then
+		while true do
+			local param, subIndex = lib.readFieldDescriptor(paramDesc)
+			table.insert(parameters, param)
+			paramDesc = paramDesc:sub(subIndex)
+			if paramDesc:len() == 0 then
+				break
+			end
 		end
 	end
 	return {

@@ -8,7 +8,9 @@ function printDebug(...)
 end
 
 local file = "test/HelloWorld.class"
-for k, v in ipairs(arg) do
+local args = table.pack(...)
+
+for k, v in ipairs(args) do
 	if v == "-debug" then
 		doDebug = true
 	else
@@ -38,6 +40,6 @@ for k,v in pairs(cl.methods) do
 	end
 end
 
-local argsArray = types.new("reference", {})
+local argsArray = types.referenceForArray({})
 printDebug("Calling main(String[])")
 mainThread:executeMethod(cl, mainMethod, {object, argsArray})
