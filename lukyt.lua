@@ -7,13 +7,22 @@ function printDebug(...)
 	end
 end
 
+local file = "test/HelloWorld.class"
+for k, v in ipairs(arg) do
+	if v == "-debug" then
+		doDebug = true
+	else
+		file = v .. ".class"
+	end
+end
+
 local class = require("class")
 local classLoader = require("classLoader")
 local thread = require("thread")
 local types = require("type")
 require("nativeDefault") -- default native functions
 
-local cl = classLoader.loadExternalClass("test/HelloWorld.class", true)
+local cl = classLoader.loadExternalClass(file, true)
 
 mainThread = thread.new()
 local object = mainThread:instantiateClass(cl)
