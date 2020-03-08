@@ -1,0 +1,4 @@
+#!/bin/sh
+export JAVA_COMPILE="/usr/lib/jvm/java-8-openjdk-amd64/bin/javac -source 1.2 -target 1.2"
+$JAVA_COMPILE java/lang/System.java
+$JAVA_COMPILE java/io/PrintStream.java
