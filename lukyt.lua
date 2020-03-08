@@ -1,6 +1,6 @@
 package.path = package.path .. ";./lib/?.lua"
 
-local doDebug = true
+local doDebug = false
 function printDebug(...)
 	if doDebug then
 		print(...)

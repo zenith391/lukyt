@@ -3,9 +3,17 @@ package java.io;
 public class PrintStream {
 
 	public void println(String str) {
-		this.print(str);
+		print(str);
 	}
 
-	public native void print(String str);
+	public void print(Object obj) {
+		print(obj.toString());
+	}
+
+	public void print(String str) {
+		_print(str);
+	}
+
+	public native void _print(String str);
 
 }

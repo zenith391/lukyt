@@ -32,13 +32,72 @@ function lib.referenceForClass(class)
 	})
 end
 
+function lib.readFieldDescriptor(descriptor)
+	local t = descriptor:sub(1,1)
+	if t == "I" then
+		return {
+			type = "int"
+		}, 2
+	elseif t == "B" then
+		return {
+			type = "byte"
+		}, 2
+	elseif t == "C" then
+		return {
+			type = "char"
+		}, 2
+	elseif t == "D" then
+		return {
+			type = "double"
+		}, 2
+	elseif t == "F" then
+		return {
+			type = "float"
+		}, 2
+	elseif t == "J" then
+		return {
+			type = "long"
+		}, 2
+	elseif t == "S" then
+		return {
+			type = "short"
+		}, 2
+	elseif t == "Z" then
+		return {
+			type = "boolean"
+		}, 2
+	elseif t == "L" then
+		local classNameEnd = descriptor:find(";") - 1
+		local className = descriptor:sub(2, classNameEnd)
+		return {
+			type = "object",
+			className = className
+		}, 3+classNameEnd
+	elseif t == "[" then
+		local component, cpSubIndex = lib.readFieldDescriptor(descriptor:sub(2))
+		return {
+			type = "array",
+			component = component
+		}, 1 + cpSubIndex
+	end
+	error("unknown type " .. t)
+end
+
 function lib.readMethodDescriptor(descriptor)
-	local desc = {}
 	local parameters = {}
 	local endParam = descriptor:find(")")
 	local paramDesc = descriptor:sub(2, endParam-1)
-	print(paramDesc)
-	return desc
+	while true do
+		local param, subIndex = lib.readFieldDescriptor(paramDesc)
+		table.insert(parameters, param)
+		paramDesc = paramDesc:sub(subIndex)
+		if paramDesc:len() == 0 then
+			break
+		end
+	end
+	return {
+		params = parameters
+	}
 end
 
 function lib.new(v, t)

@@ -45,6 +45,9 @@ end
 
 function lib:executeMethod(class, method, parameters)
 	if method.code.nativeName then -- native method
+		if not _ENV[method.code.nativeName] then
+			error("Missing native method: " .. method.code.nativeName)
+		end
 		_ENV[method.code.nativeName](class, method, parameters)
 	else
 		local frame = self:pushNewFrame()
@@ -63,6 +66,16 @@ function lib:executeMethod(class, method, parameters)
 		self.pc = self:popOperand()[2]
 		self:popFrame()
 	end
+end
+
+local function reverse(arr)
+	local i, j = 1, #arr
+	while i < j do
+		arr[i], arr[j] = arr[j], arr[i]
+		i = i + 1
+		j = j - 1
+	end
+	return arr
 end
 
 function lib:execute(class, code)
@@ -223,8 +236,15 @@ function lib:execute(class, code)
 		printDebug("invokevirtual " .. tostring(nat.name.text))
 
 		-- temporary / TODO use descriptors
-		local str = self:popOperand()
+		local desc = types.readMethodDescriptor(nat.descriptor.text)
+		local argsCount = #desc.params
+		local args = {}
+		for i=1, argsCount do
+			table.insert(args, self:popOperand())
+		end
 		local ref = self:popOperand()
+		table.insert(args, ref)
+		reverse(args)
 		local cl = ref[2].class[2].class
 		local method = nil
 		for k, v in pairs(cl.methods) do
@@ -233,7 +253,7 @@ function lib:execute(class, code)
 				break
 			end
 		end
-		self:executeMethod(cl, method, {ref, str})
+		self:executeMethod(cl, method, args)
 		self.pc = self.pc + 2
 	end
 	if op == 0xb7 then -- invokespecial
