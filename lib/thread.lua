@@ -23,12 +23,10 @@ function lib:operandStackDepth()
 end
 
 function lib:pushOperand(operand)
-	print("\tPUSH! " .. self:operandStackDepth())
 	table.insert(self.currentFrame.operandStack, operand)
 end
 
 function lib:popOperand()
-	print("\tPOP! " .. self:operandStackDepth())
 	return table.remove(self.currentFrame.operandStack)
 end
 
@@ -46,26 +44,30 @@ function lib:popFrame()
 end
 
 function lib:executeMethod(class, method, parameters)
-	local frame = self:pushNewFrame()
-	self:pushOperand(types.new("returnAddress", self.pc))
-	self.pc = 1
-	local code = method.code.code
-	for k, v in ipairs(parameters) do
-		frame.localVariables[k] = v
+	if method.code.nativeName then -- native method
+		_ENV[method.code.nativeName](class, method, parameters)
+	else
+		local frame = self:pushNewFrame()
+		self:pushOperand(types.new("returnAddress", self.pc))
+		self.pc = 1
+		local code = method.code.code
+		for k, v in ipairs(parameters) do
+			frame.localVariables[k] = v
+		end
+		while self:execute(class, code) do
+			self.pc = self.pc + 1
+		end
+		if self:operandStackDepth() ~= 1 then
+			error("operand stack was not cleaned before returning!")
+		end
+		self.pc = self:popOperand()[2]
+		self:popFrame()
 	end
-	while self:execute(class, code) do
-		self.pc = self.pc + 1
-	end
-	if self:operandStackDepth() ~= 1 then
-		error("operand stack was not cleaned before returning!")
-	end
-	self.pc = self:popOperand()[2]
-	self:popFrame()
 end
 
 function lib:execute(class, code)
 	local op = code[self.pc]
-	print("0x" .. string.format("%x", op) .. " @ 0x" .. string.format("%x", self.pc))
+	printDebug("0x" .. string.format("%x", op) .. " @ 0x" .. string.format("%x", self.pc))
 	if op == 0x1 then -- aconst_null
 		self:pushOperand(types.nullReference())
 	end
@@ -102,12 +104,17 @@ function lib:execute(class, code)
 		local index = code[self.pc]
 		local constant = class.constantPool[index]
 		if constant.type == "string" then
-			printDebug("ldc \"" .. constant.text.text .. "\"")
+			local text = constant.text.text
+			printDebug("ldc \"" .. text .. "\"")
 			local objectClass, err = classLoader.loadClass("java/lang/String", true)
 			if not objectClass then
 				error("could not import " .. classPath .. ": " .. err)
 			end
-			local object = self:instantiateClass(objectClass, {})
+			local array = {}
+			for i=1, #text do
+				table.insert(array, types.new("char", string.byte(text:sub(i,i))))
+			end
+			local object = self:instantiateClass(objectClass, {types.referenceForArray(array)})
 			self:pushOperand(object)
 		end
 	end
@@ -197,8 +204,7 @@ function lib:execute(class, code)
 		local objectRef = self:popOperand()
 		local nameAndTypeIndex = class.constantPool[index].nameAndTypeIndex
 		local nat = class.constantPool[nameAndTypeIndex]
-		local fieldClass = objectRef[2]
-		print(fieldClass)
+		local fieldClass = objectRef[2].class[2].class
 		printDebug("putfield " .. nat.name.text)
 		local field = nil
 		for k, v in pairs(fieldClass.fields) do
@@ -207,17 +213,27 @@ function lib:execute(class, code)
 				break
 			end
 		end
-		objectRef.object[v.name] = value
+		objectRef[2].object[field.name] = value
 		self.pc = self.pc + 2
 	end
 	if op == 0xb6 then -- invokevirtual
 		local index = (code[self.pc+1] << 8) | code[self.pc+2]
 		local nameAndTypeIndex = class.constantPool[index].nameAndTypeIndex
-		printDebug("invokevirtual " .. tostring(class.constantPool[nameAndTypeIndex].name.text))
+		local nat = class.constantPool[nameAndTypeIndex]
+		printDebug("invokevirtual " .. tostring(nat.name.text))
 
-		-- temporary
+		-- temporary / TODO use descriptors
 		local str = self:popOperand()
 		local ref = self:popOperand()
+		local cl = ref[2].class[2].class
+		local method = nil
+		for k, v in pairs(cl.methods) do
+			if v.name == nat.name.text and v.descriptor == nat.descriptor.text then
+				method = v
+				break
+			end
+		end
+		self:executeMethod(cl, method, {ref, str})
 		self.pc = self.pc + 2
 	end
 	if op == 0xb7 then -- invokespecial

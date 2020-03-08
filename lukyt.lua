@@ -11,6 +11,7 @@ local class = require("class")
 local classLoader = require("classLoader")
 local thread = require("thread")
 local types = require("type")
+require("nativeDefault") -- default native functions
 
 local cl = classLoader.loadExternalClass("test/HelloWorld.class", true)
 
@@ -26,5 +27,5 @@ for k,v in pairs(cl.methods) do
 end
 
 local argsArray = types.new("reference", {})
-print("Calling main(String[])")
+printDebug("Calling main(String[])")
 mainThread:executeMethod(cl, mainMethod, {object, argsArray})
