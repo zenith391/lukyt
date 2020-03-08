@@ -2,7 +2,10 @@ package java.io;
 
 public class PrintStream {
 
-	public native void println(String str);
+	public void println(String str) {
+		this.print(str);
+	}
+
 	public native void print(String str);
 
 }

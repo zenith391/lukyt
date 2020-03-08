@@ -12,10 +12,10 @@ local classLoader = require("classLoader")
 local thread = require("thread")
 local types = require("type")
 
-local cl = classLoader.loadExternalClass("test/HelloWorld.class")
+local cl = classLoader.loadExternalClass("test/HelloWorld.class", true)
 
 mainThread = thread.new()
-mainThread:instantiateClass(cl)
+local object = mainThread:instantiateClass(cl)
 
 local mainMethod = nil
 
@@ -27,4 +27,4 @@ end
 
 local argsArray = types.new("reference", {})
 print("Calling main(String[])")
-mainThread:executeMethod(cl, mainMethod, {argsArray})
+mainThread:executeMethod(cl, mainMethod, {object, argsArray})

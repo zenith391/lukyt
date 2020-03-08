@@ -51,14 +51,17 @@ end
 
 function lib:executeMethod(class, method, parameters)
 	local frame = self:pushNewFrame()
-	self:pushOperand(types.new("int", self.pc))
-	self.pc = 0
+	self:pushOperand(types.new("returnAddress", self.pc))
+	self.pc = 1
 	local code = method.code.code
 	for k, v in ipairs(parameters) do
 		frame.localVariables[k] = v
 	end
 	while self:execute(class, code) do
 		self.pc = self.pc + 1
+	end
+	if self:operandStackDepth() ~= 1 then
+		error("operand stack was not cleaned before returning!")
 	end
 	self.pc = self:popOperand()[2]
 	self:popFrame()
@@ -168,29 +171,41 @@ function lib:execute(class, code)
 			printDebug("ldc \"" .. constant.text.text .. "\"")
 		end
 	end
+	if op == 0xbb then -- new
+		local index = (code[self.pc+1] << 8) | code[self.pc+2]
+		local classPath = class.constantPool[index].name.text
+		printDebug("new " .. classPath)
+		local objectClass, err = classLoader.loadClass(classPath, true)
+		if not objectClass then
+			error("could not import " .. classPath .. ": " .. err)
+		end
+		local object = self:instantiateClass(objectClass)
+		self:pushOperand(object)
+		self.pc = self.pc + 2
+	end
 	return true
 end
 
 function lib:instantiateClass(class)
-	local clinit, init = nil, nil
+	local classReference = types.referenceForClass(class)
+	local object = types.new("reference", {
+		type = "object",
+		object = {}, -- TODO init fields
+		class = classReference
+	})
+	local init = nil
 	for _,v in pairs(class.methods) do
 		if v.name == "<init>" then
 			init = v
-		elseif v.name == "<clinit>" then
-			clinit = v
 		end
-	end
-
-	local classReference = types.referenceForClass(class)
-	if clinit then
-		printDebug("calling <clinit> on class")
-		self:executeMethod(class, clinit, {classReference})
 	end
 
 	if init then
 		printDebug("calling <init> on class")
-		self:executeMethod(class, init, {classReference})
+		self:executeMethod(class, init, {object})
 	end
+
+	return object
 end
 
 function lib.new()

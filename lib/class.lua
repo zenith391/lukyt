@@ -192,7 +192,15 @@ local function readFields(stream, constantPools)
 	return fields
 end
 
-local function getMethodCode(method)
+local function getMethodCode(thisName, method)
+	if method.accessFlags & 0x100 == 0x100 then -- if ACC_NATIVE
+		return {
+			nativeName = thisName:gsub("/", "_") .. "_" .. method.name,
+			maxStackSize = -1,
+			maxLocals = -1,
+			code = {}
+		}
+	end
 	local attr = method.attributes["Code"]
 	if not attr then
 		error("Invalid method. It doesn't contains any \"Code\" attribute.")
@@ -203,15 +211,15 @@ local function getMethodCode(method)
 	printDebug(maxStack .. ", " .. maxLocals .. ", " .. codeLength)
 	local code = table.pack(table.unpack(table.pack(attr:byte(1,attr:len())), 9, 8+codeLength))
 	-- TODO: exceptions, attribute's attributes
-	print("got " .. #code)
 	return {
+		nativeName = nil,
 		maxStackSize = maxStack,
 		maxLocals = maxLocals,
 		code = code
 	}
 end
 
-local function readMethods(stream, constantPools)
+local function readMethods(stream, thisName, constantPools)
 	local methods = {}
 	local methodsCount = readU2(stream)
 	printDebug(methodsCount .. " methods")
@@ -226,7 +234,7 @@ local function readMethods(stream, constantPools)
  			descriptor = constantPools[descriptorIndex].text,
  			attributes = attributes
  		}
- 		method.code = getMethodCode(method)
+ 		method.code = getMethodCode(thisName, method)
  		table.insert(methods, method)
 	end
 	return methods
@@ -249,17 +257,17 @@ function lib.read(stream)
 	local constantPools = readConstantPools(stream)
 
 	local accessFlags = readU2(stream)
-	local this = readU2(stream)
-	printDebug("This class: " .. constantPools[this].name.text)
-	local super = readU2(stream)
-	printDebug("Super class: " .. constantPools[super].name.text)
+	local thisName = constantPools[readU2(stream)].name.text
+	printDebug("This class: " .. thisName)
+	local superName = constantPools[readU2(stream)].name.text
+	printDebug("Super class: " .. superName)
 	printDebug("--- Details ---")
 	local interfacesCount = readU2(stream)
 	printDebug(interfacesCount .. " interfaces")
 
 	local fields = readFields(stream, constantPools)
 	printDebug("--- Class Methods --- ")
-	local methods = readMethods(stream, constantPools)
+	local methods = readMethods(stream, thisName, constantPools)
 	for _, v in pairs(methods) do
 		printDebug(v.name .. ": " .. v.descriptor)
 		printDebug("Code: " .. table.concat(v.code.code, ","))
@@ -270,8 +278,8 @@ function lib.read(stream)
 		version = minor .. "." .. major,
 		constantPool = constantPools,
 		accessFlags = accessFlags,
-		name = constantPools[this].name.text,
-		superClass = constantPools[this].name.text,
+		name = thisName,
+		superClass = superName,
 		interfaces = {}, -- TODO
 		fields = fields,
 		methods = methods,
