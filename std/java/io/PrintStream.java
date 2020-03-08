@@ -1,6 +1,6 @@
 package java.io;
 
-public class PrintStream {
+public abstract class PrintStream {
 
 	public void println(String str) {
 		print(str);
@@ -10,10 +10,6 @@ public class PrintStream {
 		print(obj.toString());
 	}
 
-	public void print(String str) {
-		_print(str);
-	}
-
-	public native void _print(String str);
+	public abstract void print(String str);
 
 }

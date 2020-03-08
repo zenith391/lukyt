@@ -78,6 +78,18 @@ local function reverse(arr)
 	return arr
 end
 
+local function findMethod(class, name, desc)
+	for k, v in pairs(class.methods) do
+		if v.name == name and v.descriptor == desc then
+			return v, class
+		end
+	end
+	if class.superClass then
+		local method = findMethod(class.superClass, name, desc)
+		return method, class.superClass
+	end
+end
+
 function lib:execute(class, code)
 	local op = code[self.pc]
 	printDebug("0x" .. string.format("%x", op) .. " @ 0x" .. string.format("%x", self.pc))
@@ -168,7 +180,7 @@ function lib:execute(class, code)
 		self:pushOperand(types.new("long", long))
 	end
 	if op == 0xb1 then -- return
-		printDebug("return from method! exit!")
+		printDebug("Void return from method")
 		return false
 	end
 	if op == 0xb2 then -- getstatic
@@ -246,14 +258,8 @@ function lib:execute(class, code)
 		table.insert(args, ref)
 		reverse(args)
 		local cl = ref[2].class[2].class
-		local method = nil
-		for k, v in pairs(cl.methods) do
-			if v.name == nat.name.text and v.descriptor == nat.descriptor.text then
-				method = v
-				break
-			end
-		end
-		self:executeMethod(cl, method, args)
+		local method, methodClass = findMethod(cl, nat.name.text, nat.descriptor.text)
+		self:executeMethod(methodClass, method, args)
 		self.pc = self.pc + 2
 	end
 	if op == 0xb7 then -- invokespecial

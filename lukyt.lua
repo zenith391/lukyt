@@ -23,6 +23,9 @@ local types = require("type")
 require("nativeDefault") -- default native functions
 
 local cl = classLoader.loadExternalClass(file, true)
+if not cl then
+	error("class not found: " .. file)
+end
 
 mainThread = thread.new()
 local object = mainThread:instantiateClass(cl)

@@ -184,12 +184,12 @@ local function readFields(stream, constantPools)
 		local descriptorIndex = readU2(stream)
 		local attributes = readAttributes(stream, constantPools)
 		table.insert(fields, {
- 			accessFlags = accessFlags,
- 			name = constantPools[nameIndex].text,
- 			descriptor = constantPools[descriptorIndex].text,
- 			staticValue = types.nullReference(),
- 			attributes = attributes
- 		})
+			accessFlags = accessFlags,
+			name = constantPools[nameIndex].text,
+			descriptor = constantPools[descriptorIndex].text,
+			staticValue = types.nullReference(),
+			attributes = attributes
+		})
 	end
 	return fields
 end
@@ -198,6 +198,13 @@ local function getMethodCode(thisName, method)
 	if method.accessFlags & 0x100 == 0x100 then -- if ACC_NATIVE
 		return {
 			nativeName = thisName:gsub("/", "_") .. "_" .. method.name,
+			maxStackSize = -1,
+			maxLocals = -1,
+			code = {}
+		}
+	end
+	if method.accessFlags & 0x400 == 0x400 then -- if ACC_ABSTRACT
+		return {
 			maxStackSize = -1,
 			maxLocals = -1,
 			code = {}
@@ -261,8 +268,14 @@ function lib.read(stream)
 	local accessFlags = readU2(stream)
 	local thisName = constantPools[readU2(stream)].name.text
 	printDebug("This class: " .. thisName)
-	local superName = constantPools[readU2(stream)].name.text
-	printDebug("Super class: " .. superName)
+	local superName = constantPools[readU2(stream)]
+	if superName then
+		superName = superName.name.text
+		printDebug("Super class: " .. superName)
+	else
+		superName = nil
+		printDebug("Super class: none")
+	end
 	printDebug("--- Details ---")
 	local interfacesCount = readU2(stream)
 	printDebug(interfacesCount .. " interfaces")
@@ -276,17 +289,21 @@ function lib.read(stream)
 		printDebug("-------")
 	end
 	local attributes = readAttributes(stream, constantPools)
-	return {
+	local class = {
 		version = minor .. "." .. major,
 		constantPool = constantPools,
 		accessFlags = accessFlags,
 		name = thisName,
-		superClass = superName,
+		superClassName = superName,
 		interfaces = {}, -- TODO
 		fields = fields,
 		methods = methods,
 		attributes = attributes
 	}
+	if class.superClassName then
+		class.superClass = require("classLoader").loadClass(class.superClassName)
+	end
+	return class
 end
 
 return lib

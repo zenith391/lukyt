@@ -4,3 +4,4 @@ $JAVA_COMPILE java/lang/System.java
 $JAVA_COMPILE java/lang/Object.java
 $JAVA_COMPILE java/lang/String.java
 $JAVA_COMPILE java/io/PrintStream.java
+$JAVA_COMPILE java/io/ConsolePrintStream.java
