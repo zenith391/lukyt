@@ -23,10 +23,12 @@ function lib:operandStackDepth()
 end
 
 function lib:pushOperand(operand)
+	printDebug("push " .. self:operandStackDepth())
 	table.insert(self.currentFrame.operandStack, operand)
 end
 
 function lib:popOperand()
+	printDebug("pop! " .. self:operandStackDepth())
 	return table.remove(self.currentFrame.operandStack)
 end
 
@@ -100,10 +102,11 @@ end
 function lib:execute(class, code)
 	local op = code[self.pc]
 	printDebug("0x" .. string.format("%x", op) .. " @ 0x" .. string.format("%x", self.pc))
-	if op == 0x1 then -- aconst_null
+	if op == 0x0 then -- nop
+
+	elseif op == 0x1 then -- aconst_null
 		self:pushOperand(types.nullReference())
-	end
-	if op==0x2 or op==0x3 or op==0x4 or op==0x5 or op==0x6 or op==0x7 or op==0x8 then -- iconst_<i>
+	elseif op==0x2 or op==0x3 or op==0x4 or op==0x5 or op==0x6 or op==0x7 or op==0x8 then -- iconst_<i>
 		if op == 0x2 then
 			self:pushOperand(types.new("int", -1))
 		end
@@ -125,13 +128,15 @@ function lib:execute(class, code)
 		if op == 0x8 then
 			self:pushOperand(types.new("int", 5))
 		end
-	end
-	if op == 0x10 then -- bipush
+	elseif op == 0xe then -- dconst_0
+		self:pushOperand(types.new("double", 0.0))
+	elseif op == 0xf then -- dconst_1
+		self:pushOperand(types.new("double", 1.0))
+	elseif op == 0x10 then -- bipush
 		self.pc = self.pc + 1
 		local byte = code[self.pc]
 		self:pushOperand(types.new("int", byte))
-	end
-	if op == 0x12 then -- ldc
+	elseif op == 0x12 then -- ldc
 		self.pc = self.pc + 1
 		local index = code[self.pc]
 		local constant = class.constantPool[index]
@@ -147,12 +152,23 @@ function lib:execute(class, code)
 				table.insert(array, types.new("char", string.byte(text:sub(i,i))))
 			end
 			local object = self:instantiateClass(objectClass, {types.referenceForArray(array)}, true)
-			print("LDC " .. object[2].type)
-			print("LDC2 " .. object[2].object["chars"][2].array[1][2])
 			self:pushOperand(object)
 		end
-	end
-	if op == 0x19 or op == 0x2a or op == 0x2b or op == 0x2c or op == 0x2d then -- aload and aload_<n>
+	elseif op == 0x15 or op == 0x1a or op == 0x1b or op == 0x1c or op == 0x1d then -- iload and iload_<n>
+		local idx = 0
+		if op == 0x15 then
+			self.pc = self.pc + 1
+			idx = code[self.pc]
+		elseif op == 0x1b then -- iload_1
+			idx = 1
+		elseif op == 0x1c then -- iload_2
+			idx = 2
+		elseif op == 0x1d then -- iload_3
+			idx = 3
+		end
+		-- iload_0 doesn't have an if here as "idx" is by default set to 0
+		self:pushOperand(self.currentFrame.localVariables[idx+1])
+	elseif op == 0x19 or op == 0x2a or op == 0x2b or op == 0x2c or op == 0x2d then -- aload and aload_<n>
 		local idx = 0
 		if op == 0x19 then
 			self.pc = self.pc + 1
@@ -166,8 +182,25 @@ function lib:execute(class, code)
 		end
 		-- aload_0 doesn't have an if here as "idx" is by default set to 0
 		self:pushOperand(self.currentFrame.localVariables[idx+1])
-	end
-	if op == 0x3a or op == 0x4b or op == 0x4c or op == 0x4d or op == 0x4e then -- astore and astore_<n>
+	elseif op == 0x34 then -- caload
+		local idx = self:popOperand()[2]
+		local array = self:popOperand()
+		self:pushOperand(array[2].array[idx])
+	elseif op == 0x36 or op == 0x3b or op == 0x3c or op == 0x3d or op == 0x3e then -- istore and istore_<n>
+		local idx = 0
+		if op == 0x36 then
+			self.pc = self.pc + 1
+			idx = code[self.pc]
+		elseif op == 0x3c then -- iload_1
+			idx = 1
+		elseif op == 0x3d then -- iload_2
+			idx = 2
+		elseif op == 0x3e then -- iload_3
+			idx = 3
+		end
+		-- iload_0 doesn't have an if here as "idx" is by default set to 0
+		self.currentFrame.localVariables[idx+1] = self:popOperand()
+	elseif op == 0x3a or op == 0x4b or op == 0x4c or op == 0x4d or op == 0x4e then -- astore and astore_<n>
 		local idx = 0
 		if op == 0x3a then
 			self.pc = self.pc + 1
@@ -179,41 +212,92 @@ function lib:execute(class, code)
 		elseif op == 0x4e then -- aload_3
 			idx = 3
 		end
-		-- aload_0 doesn't have an if here as "idx" is by default set to 0
+		-- astore_0 doesn't have an if here as "idx" is by default set to 0
 		self.currentFrame.localVariables[idx+1] = self:popOperand()
-	end
-	if op == 0x59 then -- dup
+	elseif op == 0x55 then -- castore
+		local val = self:popOperand()
+		local idx = self:popOperand()[2]
+		local array = self:popOperand()
+		io.stderr:write("PUSH AT INDEX " .. idx .. " value of type " .. val[1] .. "\n")
+		array[2].array[idx] = val
+	elseif op == 0x57 then -- pop
+		self:popOperand()
+	elseif op == 0x59 then -- dup
 		local operand = self:popOperand()
 		self:pushOperand(operand)
 		self:pushOperand(operand)
-	end
-	if op == 0x8e then -- d2i
+	elseif op == 0x60 then -- iadd
+		local first = self:popOperand()[2]
+		local second = self:popOperand()[2]
+		self:pushOperand(types.new("int", first + second))
+	elseif op == 0x64 then -- isub
+		local first = self:popOperand()[2]
+		local second = self:popOperand()[2]
+		self:pushOperand(types.new("int", first - second))
+	elseif op == 0x8e then -- d2i
 		local operand = self:popOperand()
 		if types.type(operand) ~= "double" then
 			error()
 		end
 		local int = math.floor(operand)
 		self:pushOperand(types.new("int", int))
-	end
-	if op == 0x8f then -- d2l
+	elseif op == 0x8f then -- d2l
 		local operand = self:popOperand()
 		if types.type(operand) ~= "double" then
 			error()
 		end
 		local long = math.floor(operand)
 		self:pushOperand(types.new("long", long))
-	end
-	if op == 0xb0 then -- areturn
+	elseif op == 0x9f then -- if_icmpeq
+		local branch = string.unpack(">i2", string.char(code[self.pc+1]) .. string.char(code[self.pc+2]))
+		local val2 = self:popOperand()
+		local val1 = self:popOperand()
+		if val1 == val2 then
+			self.pc = self.pc + branch - 1
+		end
+	elseif op == 0xa0 then -- if_icmpne
+		local branch = string.unpack(">i2", string.char(code[self.pc+1]) .. string.char(code[self.pc+2]))
+		local val2 = self:popOperand()[2]
+		local val1 = self:popOperand()[2]
+		if val1 ~= val2 then
+			self.pc = self.pc + branch - 1
+		end
+	elseif op == 0xa1 then -- if_icmplt
+		local branch = string.unpack(">i2", string.char(code[self.pc+1]) .. string.char(code[self.pc+2]))
+		local val2 = self:popOperand()[2]
+		local val1 = self:popOperand()[2]
+		if val1 < val2 then
+			self.pc = self.pc + branch - 1
+		end
+	elseif op == 0xa2 then -- if_icmpge
+		local branch = string.unpack(">i2", string.char(code[self.pc+1]) .. string.char(code[self.pc+2]))
+		local val2 = self:popOperand()[2]
+		local val1 = self:popOperand()[2]
+		if val1 >= val2 then
+			self.pc = self.pc + branch - 1
+		end
+	elseif op == 0xa3 then -- if_icmpgt
+		local branch = string.unpack(">i2", string.char(code[self.pc+1]) .. string.char(code[self.pc+2]))
+		local val2 = self:popOperand()[2]
+		local val1 = self:popOperand()[2]
+		if val1 > val2 then
+			self.pc = self.pc + branch - 1
+		end
+	elseif op == 0xa4 then -- if_icmple
+		local branch = string.unpack(">i2", string.char(code[self.pc+1]) .. string.char(code[self.pc+2]))
+		local val2 = self:popOperand()[2]
+		local val1 = self:popOperand()[2]
+		if val1 <= val2 then
+			self.pc = self.pc + branch - 1
+		end
+	elseif op == 0xb0 then -- areturn
 		local ref = self:popOperand()
-		print(self:operandStackDepth())
 		printDebug("Reference return from method")
 		return ref
-	end
-	if op == 0xb1 then -- return
+	elseif op == 0xb1 then -- return
 		printDebug("Void return from method")
 		return false
-	end
-	if op == 0xb2 then -- getstatic
+	elseif op == 0xb2 then -- getstatic
 		local index = (code[self.pc+1] << 8) | code[self.pc+2]
 		local nameAndTypeIndex = class.constantPool[index].nameAndTypeIndex
 		local nat = class.constantPool[nameAndTypeIndex]
@@ -232,8 +316,7 @@ function lib:execute(class, code)
 		end
 		self:pushOperand(field.staticValue)
 		self.pc = self.pc + 2
-	end
-	if op == 0xb3 then -- putstatic
+	elseif op == 0xb3 then -- putstatic
 		local index = (code[self.pc+1] << 8) | code[self.pc+2]
 		local nameAndTypeIndex = class.constantPool[index].nameAndTypeIndex
 		local nat = class.constantPool[nameAndTypeIndex]
@@ -252,8 +335,7 @@ function lib:execute(class, code)
 		end
 		field.staticValue = self:popOperand()
 		self.pc = self.pc + 2
-	end
-	if op == 0xb4 then -- getfield
+	elseif op == 0xb4 then -- getfield
 		local index = (code[self.pc+1] << 8) | code[self.pc+2]
 		local objectRef = self:popOperand()
 		local nameAndTypeIndex = class.constantPool[index].nameAndTypeIndex
@@ -267,11 +349,9 @@ function lib:execute(class, code)
 				break
 			end
 		end
-		print(objectRef[2].object[field.name][2].type)
 		self:pushOperand(objectRef[2].object[field.name])
 		self.pc = self.pc + 2
-	end
-	if op == 0xb5 then -- putfield
+	elseif op == 0xb5 then -- putfield
 		local index = (code[self.pc+1] << 8) | code[self.pc+2]
 		local value = self:popOperand()
 		local objectRef = self:popOperand()
@@ -288,8 +368,7 @@ function lib:execute(class, code)
 		end
 		objectRef[2].object[field.name] = value
 		self.pc = self.pc + 2
-	end
-	if op == 0xb6 then -- invokevirtual
+	elseif op == 0xb6 then -- invokevirtual
 		local index = (code[self.pc+1] << 8) | code[self.pc+2]
 		local nameAndTypeIndex = class.constantPool[index].nameAndTypeIndex
 		local nat = class.constantPool[nameAndTypeIndex]
@@ -302,7 +381,6 @@ function lib:execute(class, code)
 		for i=1, argsCount do
 			table.insert(args, self:popOperand())
 		end
-		print(self:operandStackDepth())
 		local ref = self:popOperand()
 		table.insert(args, ref)
 		reverse(args)
@@ -310,8 +388,7 @@ function lib:execute(class, code)
 		local method, methodClass = findMethod(cl, nat.name.text, nat.descriptor.text)
 		self:executeMethod(methodClass, method, args)
 		self.pc = self.pc + 2
-	end
-	if op == 0xb7 then -- invokespecial
+	elseif op == 0xb7 then -- invokespecial
 		local index = (code[self.pc+1] << 8) | code[self.pc+2]
 		local nameAndTypeIndex = class.constantPool[index].nameAndTypeIndex
 		local nat = class.constantPool[nameAndTypeIndex]
@@ -335,8 +412,7 @@ function lib:execute(class, code)
 		local method, methodClass = findMethod(cl, nat.name.text, nat.descriptor.text)
 		self:executeMethod(methodClass, method, args)
 		self.pc = self.pc + 2
-	end
-	if op == 0xbb then -- new
+	elseif op == 0xbb then -- new
 		local index = (code[self.pc+1] << 8) | code[self.pc+2]
 		local classPath = class.constantPool[index].name.text
 		printDebug("new " .. classPath)
@@ -347,16 +423,16 @@ function lib:execute(class, code)
 		local object = self:instantiateClass(objectClass, {}, false)
 		self:pushOperand(object)
 		self.pc = self.pc + 2
-	end
-	if op == 0xbc then -- newarray
+	elseif op == 0xbc then -- newarray
 		local atype = code[self.pc + 1]
 		local count = self:popOperand()[2]
 		self:pushOperand(types.referenceForArray({}))
 		self.pc = self.pc + 1
-	end
-	if op == 0xbe then -- arraylength
+	elseif op == 0xbe then -- arraylength
 		local arr = self:popOperand()
 		self:pushOperand(types.new("int", #arr[2].array))
+	else
+		error("unknown opcode: 0x" .. string.format("%x", op))
 	end
 	return true
 end

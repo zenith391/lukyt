@@ -217,7 +217,6 @@ local function getMethodCode(thisName, method)
 	local maxStack = readU2T(attr, 1)
 	local maxLocals = readU2T(attr, 3)
 	local codeLength = readU4T(attr, 5)
-	printDebug(maxStack .. ", " .. maxLocals .. ", " .. codeLength)
 	local code = table.pack(table.unpack(table.pack(attr:byte(1,attr:len())), 9, 8+codeLength))
 	-- TODO: exceptions, attribute's attributes
 	return {

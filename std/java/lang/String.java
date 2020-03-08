@@ -14,4 +14,8 @@ public class String {
 	public char[] toCharArray() {
 		return chars;
 	}
+
+	public String toString() {
+		return this;
+	}
 }

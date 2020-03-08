@@ -35,4 +35,8 @@ public class StringBuffer {
 		return this;
 	}
 
+	public String toString() {
+		return new String(chars);
+	}
+
 }
