@@ -1,4 +1,5 @@
 local lib = {}
+local types = require("type")
 
 local function readU1(stream)
 	return string.byte(stream:read(1))
@@ -186,6 +187,7 @@ local function readFields(stream, constantPools)
  			accessFlags = accessFlags,
  			name = constantPools[nameIndex].text,
  			descriptor = constantPools[descriptorIndex].text,
+ 			staticValue = types.nullReference(),
  			attributes = attributes
  		})
 	end

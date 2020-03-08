@@ -12,6 +12,12 @@ local typeMapping = {
 	returnAddress = "A"
 }
 
+function lib.nullReference()
+	return lib.new("reference", {
+		type = "null" -- null reference type
+	})
+end
+
 function lib.referenceForArray(array)
 	return lib.new("reference", {
 		type = "array",
@@ -24,6 +30,15 @@ function lib.referenceForClass(class)
 		type = "class",
 		class = class
 	})
+end
+
+function lib.readMethodDescriptor(descriptor)
+	local desc = {}
+	local parameters = {}
+	local endParam = descriptor:find(")")
+	local paramDesc = descriptor:sub(2, endParam-1)
+	print(paramDesc)
+	return desc
 end
 
 function lib.new(v, t)

@@ -22,17 +22,13 @@ function lib:operandStackDepth()
 	return depth
 end
 
-function lib.nullReference()
-	return types.new("reference", {
-		type = 4, -- null reference type
-	})
-end
-
 function lib:pushOperand(operand)
+	print("\tPUSH! " .. self:operandStackDepth())
 	table.insert(self.currentFrame.operandStack, operand)
 end
 
 function lib:popOperand()
+	print("\tPOP! " .. self:operandStackDepth())
 	return table.remove(self.currentFrame.operandStack)
 end
 
@@ -69,31 +65,10 @@ end
 
 function lib:execute(class, code)
 	local op = code[self.pc]
-	print(op)
+	print("0x" .. string.format("%x", op) .. " @ 0x" .. string.format("%x", self.pc))
 	if op == 0x1 then -- aconst_null
-		self:pushOperand(lib.nullReference())
+		self:pushOperand(types.nullReference())
 	end
-	if op == 0x19 or op == 0x2a or op == 0x2b or op == 0x2c or op == 0x2d then -- aload and aload_<n>
-		local idx = 0
-		if op == 0x19 then
-			self.pc = self.pc + 1
-			idx = code[self.pc]
-		elseif op == 0x2b then -- aload_1
-			idx = 1
-		elseif op == 0x2c then -- aload_2
-			idx = 2
-		elseif op == 0x2d then -- aload_3
-			idx = 3
-		end
-		-- aload_0 doesn't have an if here as "idx" is by default set to 0
-		self:pushOperand(self.currentFrame.localVariables[idx+1])
-	end
-	if op == 0x10 then -- bipush
-		self.pc = self.pc + 1
-		local byte = code[self.pc]
-		self:pushOperand(types.new("int", byte))
-	end
-
 	if op==0x2 or op==0x3 or op==0x4 or op==0x5 or op==0x6 or op==0x7 or op==0x8 then -- iconst_<i>
 		if op == 0x2 then
 			self:pushOperand(types.new("int", -1))
@@ -117,6 +92,45 @@ function lib:execute(class, code)
 			self:pushOperand(types.new("int", 5))
 		end
 	end
+	if op == 0x10 then -- bipush
+		self.pc = self.pc + 1
+		local byte = code[self.pc]
+		self:pushOperand(types.new("int", byte))
+	end
+	if op == 0x12 then -- ldc
+		self.pc = self.pc + 1
+		local index = code[self.pc]
+		local constant = class.constantPool[index]
+		if constant.type == "string" then
+			printDebug("ldc \"" .. constant.text.text .. "\"")
+			local objectClass, err = classLoader.loadClass("java/lang/String", true)
+			if not objectClass then
+				error("could not import " .. classPath .. ": " .. err)
+			end
+			local object = self:instantiateClass(objectClass, {})
+			self:pushOperand(object)
+		end
+	end
+	if op == 0x19 or op == 0x2a or op == 0x2b or op == 0x2c or op == 0x2d then -- aload and aload_<n>
+		local idx = 0
+		if op == 0x19 then
+			self.pc = self.pc + 1
+			idx = code[self.pc]
+		elseif op == 0x2b then -- aload_1
+			idx = 1
+		elseif op == 0x2c then -- aload_2
+			idx = 2
+		elseif op == 0x2d then -- aload_3
+			idx = 3
+		end
+		-- aload_0 doesn't have an if here as "idx" is by default set to 0
+		self:pushOperand(self.currentFrame.localVariables[idx+1])
+	end
+	if op == 0x59 then -- dup
+		local operand = self:popOperand()
+		self:pushOperand(operand)
+		self:pushOperand(operand)
+	end
 	if op == 0x8e then -- d2i
 		local operand = self:popOperand()
 		if types.type(operand) ~= "double" then
@@ -137,19 +151,6 @@ function lib:execute(class, code)
 		printDebug("return from method! exit!")
 		return false
 	end
-	if op == 0xb7 then -- invokespecial
-		local index = (code[self.pc+1] << 8) | code[self.pc+2]
-		local nameAndTypeIndex = class.constantPool[index].nameAndTypeIndex
-		printDebug("invokespecial " .. tostring(class.constantPool[nameAndTypeIndex].name.text))
-		-- Todo act like "super()"
-		self.pc = self.pc + 2
-	end
-	if op == 0xb6 then -- invokevirtual
-		local index = (code[self.pc+1] << 8) | code[self.pc+2]
-		local nameAndTypeIndex = class.constantPool[index].nameAndTypeIndex
-		printDebug("invokevirtual " .. tostring(class.constantPool[nameAndTypeIndex].name.text))
-		self.pc = self.pc + 2
-	end
 	if op == 0xb2 then -- getstatic
 		local index = (code[self.pc+1] << 8) | code[self.pc+2]
 		local nameAndTypeIndex = class.constantPool[index].nameAndTypeIndex
@@ -160,16 +161,72 @@ function lib:execute(class, code)
 		if not fieldClass then
 			error("could not import " .. fieldClassPath .. ": " .. err)
 		end
-		printDebug("--- return to method ---")
+		local field = nil
+		for k, v in pairs(fieldClass.fields) do
+			if v.name == nat.name.text then
+				field = v
+				break
+			end
+		end
+		self:pushOperand(field.staticValue)
 		self.pc = self.pc + 2
 	end
-	if op == 0x12 then -- ldc
-		self.pc = self.pc + 1
-		local index = code[self.pc]
-		local constant = class.constantPool[index]
-		if constant.type == "string" then
-			printDebug("ldc \"" .. constant.text.text .. "\"")
+	if op == 0xb3 then -- putstatic
+		local index = (code[self.pc+1] << 8) | code[self.pc+2]
+		local nameAndTypeIndex = class.constantPool[index].nameAndTypeIndex
+		local nat = class.constantPool[nameAndTypeIndex]
+		local fieldClassPath = class.constantPool[index].class.name.text
+		printDebug("putstatic " .. fieldClassPath .. " " .. nat.name.text)
+		local fieldClass, err = classLoader.loadClass(fieldClassPath, true)
+		if not fieldClass then
+			error("could not import " .. fieldClassPath .. ": " .. err)
 		end
+		local field = nil
+		for k, v in pairs(fieldClass.fields) do
+			if v.name == nat.name.text then
+				field = v
+				break
+			end
+		end
+		field.staticValue = self:popOperand()
+		self.pc = self.pc + 2
+	end
+	if op == 0xb5 then -- putfield
+		local index = (code[self.pc+1] << 8) | code[self.pc+2]
+		local value = self:popOperand()
+		local objectRef = self:popOperand()
+		local nameAndTypeIndex = class.constantPool[index].nameAndTypeIndex
+		local nat = class.constantPool[nameAndTypeIndex]
+		local fieldClass = objectRef[2]
+		print(fieldClass)
+		printDebug("putfield " .. nat.name.text)
+		local field = nil
+		for k, v in pairs(fieldClass.fields) do
+			if v.name == nat.name.text then
+				field = v
+				break
+			end
+		end
+		objectRef.object[v.name] = value
+		self.pc = self.pc + 2
+	end
+	if op == 0xb6 then -- invokevirtual
+		local index = (code[self.pc+1] << 8) | code[self.pc+2]
+		local nameAndTypeIndex = class.constantPool[index].nameAndTypeIndex
+		printDebug("invokevirtual " .. tostring(class.constantPool[nameAndTypeIndex].name.text))
+
+		-- temporary
+		local str = self:popOperand()
+		local ref = self:popOperand()
+		self.pc = self.pc + 2
+	end
+	if op == 0xb7 then -- invokespecial
+		local index = (code[self.pc+1] << 8) | code[self.pc+2]
+		local nameAndTypeIndex = class.constantPool[index].nameAndTypeIndex
+		printDebug("invokespecial " .. tostring(class.constantPool[nameAndTypeIndex].name.text))
+		local objectRef = self:popOperand()
+		-- TODO
+		self.pc = self.pc + 2
 	end
 	if op == 0xbb then -- new
 		local index = (code[self.pc+1] << 8) | code[self.pc+2]
@@ -186,7 +243,7 @@ function lib:execute(class, code)
 	return true
 end
 
-function lib:instantiateClass(class)
+function lib:instantiateClass(class, parameters)
 	local classReference = types.referenceForClass(class)
 	local object = types.new("reference", {
 		type = "object",
@@ -201,8 +258,14 @@ function lib:instantiateClass(class)
 	end
 
 	if init then
-		printDebug("calling <init> on class")
-		self:executeMethod(class, init, {object})
+		printDebug("calling <init> on object (" .. class.name .. ")")
+		local params = {object}
+		if parameters then
+			for k, v in ipairs(parameters) do
+				table.insert(params, v)
+			end
+		end
+		self:executeMethod(class, init, params)
 	end
 
 	return object
