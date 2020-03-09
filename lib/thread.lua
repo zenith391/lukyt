@@ -185,7 +185,7 @@ function lib:execute(class, code)
 	elseif op == 0x34 then -- caload
 		local idx = self:popOperand()[2]
 		local array = self:popOperand()
-		self:pushOperand(array[2].array[idx])
+		self:pushOperand(array[2].array[idx+1])
 	elseif op == 0x36 or op == 0x3b or op == 0x3c or op == 0x3d or op == 0x3e then -- istore and istore_<n>
 		local idx = 0
 		if op == 0x36 then
@@ -218,8 +218,7 @@ function lib:execute(class, code)
 		local val = self:popOperand()
 		local idx = self:popOperand()[2]
 		local array = self:popOperand()
-		io.stderr:write("PUSH AT INDEX " .. idx .. " value of type " .. val[1] .. "\n")
-		array[2].array[idx] = val
+		array[2].array[idx+1] = val
 	elseif op == 0x57 then -- pop
 		self:popOperand()
 	elseif op == 0x59 then -- dup
@@ -234,6 +233,12 @@ function lib:execute(class, code)
 		local first = self:popOperand()[2]
 		local second = self:popOperand()[2]
 		self:pushOperand(types.new("int", first - second))
+	elseif op == 0x84 then -- iinc
+		local index = code[self.pc+1]
+		local const = string.unpack("b", string.char(code[self.pc+2]))
+		local var = self.currentFrame.localVariables[index+1]
+		var[2] = var[2] + const
+		self.pc = self.pc + 2
 	elseif op == 0x8e then -- d2i
 		local operand = self:popOperand()
 		if types.type(operand) ~= "double" then
@@ -254,6 +259,8 @@ function lib:execute(class, code)
 		local val1 = self:popOperand()
 		if val1 == val2 then
 			self.pc = self.pc + branch - 1
+		else
+			self.pc = self.pc + 2
 		end
 	elseif op == 0xa0 then -- if_icmpne
 		local branch = string.unpack(">i2", string.char(code[self.pc+1]) .. string.char(code[self.pc+2]))
@@ -261,6 +268,8 @@ function lib:execute(class, code)
 		local val1 = self:popOperand()[2]
 		if val1 ~= val2 then
 			self.pc = self.pc + branch - 1
+		else
+			self.pc = self.pc + 2
 		end
 	elseif op == 0xa1 then -- if_icmplt
 		local branch = string.unpack(">i2", string.char(code[self.pc+1]) .. string.char(code[self.pc+2]))
@@ -268,6 +277,8 @@ function lib:execute(class, code)
 		local val1 = self:popOperand()[2]
 		if val1 < val2 then
 			self.pc = self.pc + branch - 1
+		else
+			self.pc = self.pc + 2
 		end
 	elseif op == 0xa2 then -- if_icmpge
 		local branch = string.unpack(">i2", string.char(code[self.pc+1]) .. string.char(code[self.pc+2]))
@@ -275,6 +286,8 @@ function lib:execute(class, code)
 		local val1 = self:popOperand()[2]
 		if val1 >= val2 then
 			self.pc = self.pc + branch - 1
+		else
+			self.pc = self.pc + 2
 		end
 	elseif op == 0xa3 then -- if_icmpgt
 		local branch = string.unpack(">i2", string.char(code[self.pc+1]) .. string.char(code[self.pc+2]))
@@ -282,6 +295,8 @@ function lib:execute(class, code)
 		local val1 = self:popOperand()[2]
 		if val1 > val2 then
 			self.pc = self.pc + branch - 1
+		else
+			self.pc = self.pc + 2
 		end
 	elseif op == 0xa4 then -- if_icmple
 		local branch = string.unpack(">i2", string.char(code[self.pc+1]) .. string.char(code[self.pc+2]))
@@ -289,7 +304,12 @@ function lib:execute(class, code)
 		local val1 = self:popOperand()[2]
 		if val1 <= val2 then
 			self.pc = self.pc + branch - 1
+		else
+			self.pc = self.pc + 2
 		end
+	elseif op == 0xa7 then -- goto
+		local branch = string.unpack(">i2", string.char(code[self.pc+1]) .. string.char(code[self.pc+2]))
+		self.pc = self.pc + branch - 1
 	elseif op == 0xb0 then -- areturn
 		local ref = self:popOperand()
 		printDebug("Reference return from method")
