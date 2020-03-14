@@ -7,7 +7,7 @@ public class Object {
 	}
 
 	public String toString() {
-		return "";
+		return "some object";
 	}
 
 	public native int hashCode(); // TODO

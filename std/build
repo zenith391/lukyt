@@ -6,3 +6,4 @@ $JAVA_COMPILE java/lang/StringBuffer.java
 $JAVA_COMPILE java/lang/String.java
 $JAVA_COMPILE java/io/PrintStream.java
 $JAVA_COMPILE java/io/ConsolePrintStream.java
+$JAVA_COMPILE java/lang/Runtime.java

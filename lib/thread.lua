@@ -155,7 +155,7 @@ function lib:execute(class, code)
 			for i=1, #text do
 				table.insert(array, types.new("char", string.byte(text:sub(i,i))))
 			end
-			local object = self:instantiateClass(objectClass, {types.referenceForArray(array)}, true)
+			local object = self:instantiateClass(objectClass, {types.referenceForArray(array)}, true, "([C)V")
 			self:pushOperand(object)
 		end
 	elseif op == 0x15 or op == 0x1a or op == 0x1b or op == 0x1c or op == 0x1d then -- iload and iload_<n>
@@ -186,6 +186,13 @@ function lib:execute(class, code)
 		end
 		-- aload_0 doesn't have an if here as "idx" is by default set to 0
 		self:pushOperand(self.currentFrame.localVariables[idx+1])
+	elseif op == 0x32 then -- aaload
+		local idx = self:popOperand()[2]
+		local array = self:popOperand()
+		if idx < 0 then
+			error("negativearrayindex: trying to set array with index " .. idx)
+		end
+		self:pushOperand(array[2].array[idx+1])
 	elseif op == 0x34 then -- caload
 		local idx = self:popOperand()[2]
 		local array = self:popOperand()
@@ -221,6 +228,11 @@ function lib:execute(class, code)
 		end
 		-- astore_0 doesn't have an if here as "idx" is by default set to 0
 		self.currentFrame.localVariables[idx+1] = self:popOperand()
+	elseif op == 0x53 then -- aastore
+		local val = self:popOperand()
+		local idx = self:popOperand()[2]
+		local array = self:popOperand()
+		array[2].array[idx+1] = val
 	elseif op == 0x55 then -- castore
 		local val = self:popOperand()
 		local idx = self:popOperand()[2]
@@ -260,6 +272,54 @@ function lib:execute(class, code)
 		end
 		local long = math.floor(operand)
 		self:pushOperand(types.new("long", long))
+	elseif op == 0x99 then -- ifeq
+		local branch = string.unpack(">i2", string.char(code[self.pc+1]) .. string.char(code[self.pc+2]))
+		local val1 = self:popOperand()
+		if val1 == 0 then
+			self.pc = self.pc + branch - 1
+		else
+			self.pc = self.pc + 2
+		end
+	elseif op == 0x9a then -- ifne
+		local branch = string.unpack(">i2", string.char(code[self.pc+1]) .. string.char(code[self.pc+2]))
+		local val1 = self:popOperand()[2]
+		if val1 ~= 0 then
+			self.pc = self.pc + branch - 1
+		else
+			self.pc = self.pc + 2
+		end
+	elseif op == 0x9b then -- iflt
+		local branch = string.unpack(">i2", string.char(code[self.pc+1]) .. string.char(code[self.pc+2]))
+		local val1 = self:popOperand()[2]
+		if val1 < 0 then
+			self.pc = self.pc + branch - 1
+		else
+			self.pc = self.pc + 2
+		end
+	elseif op == 0x9c then -- ifge
+		local branch = string.unpack(">i2", string.char(code[self.pc+1]) .. string.char(code[self.pc+2]))
+		local val1 = self:popOperand()[2]
+		if val1 >= 0 then
+			self.pc = self.pc + branch - 1
+		else
+			self.pc = self.pc + 2
+		end
+	elseif op == 0x9d then -- ifgt
+		local branch = string.unpack(">i2", string.char(code[self.pc+1]) .. string.char(code[self.pc+2]))
+		local val1 = self:popOperand()[2]
+		if val1 > 0 then
+			self.pc = self.pc + branch - 1
+		else
+			self.pc = self.pc + 2
+		end
+	elseif op == 0x9e then -- ifle
+		local branch = string.unpack(">i2", string.char(code[self.pc+1]) .. string.char(code[self.pc+2]))
+		local val1 = self:popOperand()[2]
+		if val1 <= 0 then
+			self.pc = self.pc + branch - 1
+		else
+			self.pc = self.pc + 2
+		end
 	elseif op == 0x9f then -- if_icmpeq
 		local branch = string.unpack(">i2", string.char(code[self.pc+1]) .. string.char(code[self.pc+2]))
 		local val2 = self:popOperand()
@@ -317,12 +377,16 @@ function lib:execute(class, code)
 	elseif op == 0xa7 then -- goto
 		local branch = string.unpack(">i2", string.char(code[self.pc+1]) .. string.char(code[self.pc+2]))
 		self.pc = self.pc + branch - 1
+	elseif op == 0xac then -- ireturn
+		local ref = self:popOperand()
+		printDebug("ireturn")
+		return ref
 	elseif op == 0xb0 then -- areturn
 		local ref = self:popOperand()
-		printDebug("Reference return from method")
+		printDebug("areturn")
 		return ref
 	elseif op == 0xb1 then -- return
-		printDebug("Void return from method")
+		printDebug("return")
 		return false
 	elseif op == 0xb2 then -- getstatic
 		local index = (code[self.pc+1] << 8) | code[self.pc+2]
@@ -495,6 +559,15 @@ function lib:execute(class, code)
 		end
 		self:pushOperand(types.referenceForArray(arr))
 		self.pc = self.pc + 1
+	elseif op == 0xbd then -- anewarray
+		local index = (code[self.pc+1] << 8) | code[self.pc+2] -- no type checking yet
+		local count = self:popOperand()[2]
+		local arr = {}
+		for i=1,count do
+			table.insert(arr, types.nullReference())
+		end
+		self:pushOperand(types.referenceForArray(arr))
+		self.pc = self.pc + 2
 	elseif op == 0xbe then -- arraylength
 		local arr = self:popOperand()
 		self:pushOperand(types.new("int", #arr[2].array))
@@ -504,7 +577,7 @@ function lib:execute(class, code)
 	return true
 end
 
-function lib:instantiateClass(class, parameters, doInit)
+function lib:instantiateClass(class, parameters, doInit, initDescriptor)
 	local classReference = types.referenceForClass(class)
 	local object = types.new("reference", {
 		type = "object",
@@ -516,7 +589,10 @@ function lib:instantiateClass(class, parameters, doInit)
 	end
 	local init = nil
 	for _,v in pairs(class.methods) do
-		if v.name == "<init>" then
+		if doInit and not initDescriptor then
+			error()
+		end
+		if v.name == "<init>" and v.descriptor == initDescriptor then
 			init = v
 		end
 	end
