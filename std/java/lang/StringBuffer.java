@@ -40,6 +40,10 @@ public class StringBuffer {
 		return append(Long.toString(l));
 	}
 
+	public StringBuffer append(int i) {
+		return append((long) i);
+	}
+
 	public String toString() {
 		return new String(chars);
 	}

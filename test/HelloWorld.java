@@ -1,9 +1,5 @@
 public class HelloWorld {
 
-	public static void testLoop(int i) {
-		System.out.println("Test");
-	}
-
 	public static void main(String[] args) {
 		System.out.println("Hello, World!");
 
@@ -17,9 +13,8 @@ public class HelloWorld {
 
 		System.out.print(buf.toString());
 		long start = System.nanoTime();
-		for (int i = 0; i < 10; i++) {
-			testLoop(i);
-			System.gc();
+		for (int i = 0; i < 100; i++) {
+			System.out.println("Test " + (i+1));
 		}
 		long end = System.nanoTime();
 		long total = end - start;

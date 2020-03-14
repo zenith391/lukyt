@@ -1,20 +1,23 @@
--- Default native library 
+-- Default native library for standalone Lua
+
 local native = require("native") -- native integration
 local types = require("type")
 
-local binPath = package.cpath:match("%p[\\|/]?%p(%a+)")
 local osName = "Unknown"
-if binPath == "dll" then
-	osName = "Windows"
-elseif binPath == "so" then
-	osName = "Unix"
-elseif binPath == "dylib" then
-	osName = "Mac OS X"
-end
-local fileSeparator, lineSeparator = "/", "\n"
-if osName == "Windows" then
-	fileSeparator = "\\"
-	lineSeparator = "\r\n"
+if package.cpath then
+	local binPath = package.cpath:match("%p[\\|/]?%p(%a+)")
+	if binPath == "dll" then
+		osName = "Windows"
+	elseif binPath == "so" then
+		osName = "Unix"
+	elseif binPath == "dylib" then
+		osName = "Mac OS X"
+	end
+	local fileSeparator, lineSeparator = "/", "\n"
+	if osName == "Windows" then
+		fileSeparator = "\\"
+		lineSeparator = "\r\n"
+	end
 end
 
 local properties = {

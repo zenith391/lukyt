@@ -320,6 +320,8 @@ function lib:execute(class, code)
 		local var = self.currentFrame.localVariables[index+1]
 		var[2] = var[2] + const
 		self.pc = self.pc + 2
+	elseif op == 0x85 then -- i2l
+		self:pushOperand(types.new("long", self:popOperand()[2]))
 	elseif op == 0x8e then -- d2i
 		local operand = self:popOperand()
 		if types.type(operand) ~= "double" then
