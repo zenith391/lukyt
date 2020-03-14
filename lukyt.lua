@@ -7,6 +7,7 @@ function printDebug(...)
 	end
 end
 
+local file = "HelloWorld.class"
 local args = table.pack(...)
 
 for k, v in ipairs(args) do
@@ -23,7 +24,6 @@ local thread = require("thread")
 local types = require("type")
 require("nativeDefault") -- default native functions
 
-local cl = classLoader.loadExternalClass(file, true)
 table.insert(classLoader.classpath, "test/") -- debug
 local cl = classLoader.loadClass(file:sub(1,file:len()-6), true)
 if not cl then
