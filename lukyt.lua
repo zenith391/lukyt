@@ -25,12 +25,12 @@ local types = require("type")
 require("nativeDefault") -- default native functions
 
 table.insert(classLoader.classpath, "test/") -- debug
+mainThread = thread.new()
 local cl = classLoader.loadClass(file:sub(1,file:len()-6), true)
 if not cl then
 	error("class not found: " .. file)
 end
 
-mainThread = thread.new()
 local object = mainThread:instantiateClass(cl)
 
 local mainMethod = nil

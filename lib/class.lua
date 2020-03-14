@@ -29,7 +29,8 @@ local function readConstantPools(stream)
 	local constantPools = {}
 	local cpCount = readU2(stream)
 	printDebug(cpCount .. " constants in the constant pool")
-	for i=1, cpCount-1 do
+	local i = 1
+	while i < cpCount do
 		local tag = readU1(stream)
 		if tag == 11 then -- CONSTANT_InterfaceMethodRef
 			local classIndex = readU2(stream)
@@ -39,8 +40,7 @@ local function readConstantPools(stream)
 				nameAndTypeIndex = natIndex,
 				classIndex = classIndex
 			})
-		end
-		if tag == 10 then -- CONSTANT_Methodref
+		elseif tag == 10 then -- CONSTANT_Methodref
 			local classIndex = readU2(stream)
 			local natIndex = readU2(stream)
 			table.insert(constantPools, {
@@ -48,8 +48,7 @@ local function readConstantPools(stream)
 				nameAndTypeIndex = natIndex,
 				classIndex = classIndex
 			})
-		end
-		if tag == 9 then -- CONSTANT_Fieldref
+		elseif tag == 9 then -- CONSTANT_Fieldref
 			local classIndex = readU2(stream)
 			local natIndex = readU2(stream)
 			table.insert(constantPools, {
@@ -57,34 +56,30 @@ local function readConstantPools(stream)
 				nameAndTypeIndex = natIndex,
 				classIndex = classIndex
 			})
-		end
-		if tag == 8 then -- CONSTANT_String_info
+		elseif tag == 8 then -- CONSTANT_String_info
 			local stringIndex = readU2(stream)
 			table.insert(constantPools, {
 				type = "string",
 				textIndex = stringIndex
 			})
-		end
-		if tag == 3 then -- CONSTANT_Integer
+		elseif tag == 3 then -- CONSTANT_Integer
 			local int = readU4(stream)
 			table.insert(constantPools, {
 				type = "integer",
 				value = int
 			})
-		end
-		if tag == 4 then -- CONSTANT_Float
+		elseif tag == 4 then -- CONSTANT_Float
 			local bytes = stream:read(4)
-		end
-		if tag == 5 then -- CONSTANT_Long
+		elseif tag == 5 then -- CONSTANT_Long
 			local highBytes = readU4(stream)
 			local lowBytes = readU4(stream)
 			table.insert(constantPools, {
 				type = "long",
-				highBytes = highBytes,
-				lowBytes = lowBytes
+				value = (highBytes << 32) | lowBytes
 			})
-		end
-		if tag == 6 then -- CONSTANT_Double
+			table.insert(constantPools, {}) -- some padding
+			i = i + 1
+		elseif tag == 6 then -- CONSTANT_Double
 			local highBytes = stream:read(4)
 			local lowBytes = stream:read(4)
 			table.insert(constantPools, {
@@ -92,8 +87,9 @@ local function readConstantPools(stream)
 				highBytes = highBytes,
 				lowBytes = lowBytes
 			})
-		end
-		if tag == 12 then -- CONSTANT_NameAndType
+			table.insert(constantPools, {}) -- some padding
+			i = i + 1
+		elseif tag == 12 then -- CONSTANT_NameAndType
 			local nameIndex = readU2(stream)
 			local descriptorIndex = readU2(stream)
 			table.insert(constantPools, {
@@ -101,28 +97,24 @@ local function readConstantPools(stream)
 				nameIndex = nameIndex,
 				descriptorIndex = descriptorIndex
 			})
-		end
-		if tag == 1 then -- CONSTANT_Utf8
+		elseif tag == 1 then -- CONSTANT_Utf8
 			local length = readU2(stream)
 			local bytes = stream:read(length)
 			table.insert(constantPools, {
 				type = "utf8",
 				text = bytes
 			})
-		end
-		if tag == 15 then -- CONSTANT_MethodHandle
+		elseif tag == 15 then -- CONSTANT_MethodHandle
 			local referenceKind = readU1(stream)
 			local referenceIndex = readU2(stream)
 
-		end
-		if tag == 16 then -- CONSTANT_MethodType
+		elseif tag == 16 then -- CONSTANT_MethodType
 			local descriptorIndex = readU2(stream)
 			table.insert(constantPools, {
 				type = "methodType",
 				descriptorIndex = descriptorIndex
 			})
-		end
-		if tag == 18 then -- CONSTANT_InvokeDynamic
+		elseif tag == 18 then -- CONSTANT_InvokeDynamic
 			local bootstrapMethodAttrIndex = readU2(stream)
 			local natIndex = readU2(stream)
 			table.insert(constantPools, {
@@ -130,14 +122,17 @@ local function readConstantPools(stream)
 				bootstrapMethodAttrIndex = bootstrapMethodAttrIndex,
 				nameAndTypeIndex = natIndex
 			})
-		end
-		if tag == 7 then -- CONSTANT_Class
+		elseif tag == 7 then -- CONSTANT_Class
 			local nameIndex = readU2(stream)
 			table.insert(constantPools, {
 				type = "class",
 				nameIndex = nameIndex
 			})
+		else
+			print(i)
+			error("unknown class constant type: " .. tag)
 		end
+		i = i + 1
 	end
 
 	for k, v in pairs(constantPools) do
@@ -183,11 +178,16 @@ local function readFields(stream, constantPools)
 		local nameIndex = readU2(stream)
 		local descriptorIndex = readU2(stream)
 		local attributes = readAttributes(stream, constantPools)
+		local staticValue = types.nullReference()
+		if attributes["ConstantValue"] then
+			local index = (staticValue[1] << 8) | staticValue[2]
+			print(constantPools[nameIndex].text)
+		end
 		table.insert(fields, {
 			accessFlags = accessFlags,
 			name = constantPools[nameIndex].text,
 			descriptor = constantPools[descriptorIndex].text,
-			staticValue = types.nullReference(),
+			staticValue = staticValue,
 			attributes = attributes
 		})
 	end

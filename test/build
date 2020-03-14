@@ -1,3 +1,3 @@
 #!/bin/sh
 export JAVA_HOME=/usr/lib/jvm/java-8-openjdk-amd64
-$JAVA_HOME/bin/javac -source 1.2 -target 1.2 HelloWorld.java
+$JAVA_HOME/bin/javac -g:none -Xlint:-options -source 1.2 -target 1.2 -bootclasspath "../std" HelloWorld.java

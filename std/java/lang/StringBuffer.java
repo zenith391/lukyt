@@ -36,6 +36,10 @@ public class StringBuffer {
 		return this;
 	}
 
+	public StringBuffer append(long l) {
+		return append(Long.toString(l));
+	}
+
 	public String toString() {
 		return new String(chars);
 	}

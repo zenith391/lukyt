@@ -50,7 +50,10 @@ function lib:executeMethod(class, method, parameters)
 		if not _ENV[method.code.nativeName] then
 			error("Missing native method: " .. method.code.nativeName)
 		end
-		_ENV[method.code.nativeName](class, method, parameters)
+		local ret = _ENV[method.code.nativeName](class, method, self, parameters)
+		if self.currentFrame then
+			self:pushOperand(ret)
+		end
 	else
 		local frame = self:pushNewFrame()
 		self:pushOperand(types.new("returnAddress", self.pc))
@@ -99,6 +102,27 @@ local function findMethod(class, name, desc)
 	end
 end
 
+local function ldc(self, constant)
+	if constant.type == "string" then
+		local text = constant.text.text
+		printDebug("ldc \"" .. text .. "\"")
+		local objectClass, err = classLoader.loadClass("java/lang/String", true)
+		if not objectClass then
+			error("could not import java/lang/String !!! " .. err)
+		end
+		local array = {}
+		for i=1, #text do
+			table.insert(array, types.new("char", string.byte(text:sub(i,i))))
+		end
+		local object = self:instantiateClass(objectClass, {types.referenceForArray(array)}, true, "([C)V")
+		self:pushOperand(object)
+	elseif constant.type == "long" or constant.type == "int" then
+		local value = constant.value
+		printDebug("ldc " .. value)
+		self:pushOperand(types.new("long", value))
+	end
+end
+
 function lib:execute(class, code)
 	local op = code[self.pc]
 	printDebug("0x" .. string.format("%x", op) .. " @ 0x" .. string.format("%x", self.pc))
@@ -128,6 +152,12 @@ function lib:execute(class, code)
 		if op == 0x8 then
 			self:pushOperand(types.new("int", 5))
 		end
+	elseif op == 0x9 or op == 0xa then -- lconst_<l>
+		if op == 0x9 then
+			self:pushOperand(types.new("long", 0))
+		elseif op == 0xa then
+			self:pushOperand(types.new("long", 1))
+		end
 	elseif op == 0xe then -- dconst_0
 		self:pushOperand(types.new("double", 0.0))
 	elseif op == 0xf then -- dconst_1
@@ -144,20 +174,12 @@ function lib:execute(class, code)
 		self.pc = self.pc + 1
 		local index = code[self.pc]
 		local constant = class.constantPool[index]
-		if constant.type == "string" then
-			local text = constant.text.text
-			printDebug("ldc \"" .. text .. "\"")
-			local objectClass, err = classLoader.loadClass("java/lang/String", true)
-			if not objectClass then
-				error("could not import java/lang/String !!! " .. err)
-			end
-			local array = {}
-			for i=1, #text do
-				table.insert(array, types.new("char", string.byte(text:sub(i,i))))
-			end
-			local object = self:instantiateClass(objectClass, {types.referenceForArray(array)}, true, "([C)V")
-			self:pushOperand(object)
-		end
+		ldc(self, constant)
+	elseif op == 0x13 or op == 0x14 then -- ldc_w and ldc2_w
+		local index = (code[self.pc+1] << 8) | code[self.pc+2]
+		local constant = class.constantPool[index]
+		ldc(self, constant)
+		self.pc = self.pc + 2
 	elseif op == 0x15 or op == 0x1a or op == 0x1b or op == 0x1c or op == 0x1d then -- iload and iload_<n>
 		local idx = 0
 		if op == 0x15 then
@@ -168,6 +190,20 @@ function lib:execute(class, code)
 		elseif op == 0x1c then -- iload_2
 			idx = 2
 		elseif op == 0x1d then -- iload_3
+			idx = 3
+		end
+		-- iload_0 doesn't have an if here as "idx" is by default set to 0
+		self:pushOperand(self.currentFrame.localVariables[idx+1])
+	elseif op == 0x16 or op == 0x1e or op == 0x1f or op == 0x20 or op == 0x21 then -- lload and lload_<n>
+		local idx = 0
+		if op == 0x16 then
+			self.pc = self.pc + 1
+			idx = code[self.pc]
+		elseif op == 0x1f then -- lload_1
+			idx = 1
+		elseif op == 0x20 then -- lload_2
+			idx = 2
+		elseif op == 0x21 then -- lload_3
 			idx = 3
 		end
 		-- iload_0 doesn't have an if here as "idx" is by default set to 0
@@ -212,7 +248,21 @@ function lib:execute(class, code)
 		elseif op == 0x3e then -- istore_3
 			idx = 3
 		end
-		-- iload_0 doesn't have an if here as "idx" is by default set to 0
+		-- istore_0 doesn't have an if here as "idx" is by default set to 0
+		self.currentFrame.localVariables[idx+1] = self:popOperand()
+	elseif op == 0x37 or op == 0x3f or op == 0x40 or op == 0x41 or op == 0x42 then -- lstore and lstore_<n>
+		local idx = 0
+		if op == 0x37 then
+			self.pc = self.pc + 1
+			idx = code[self.pc]
+		elseif op == 0x40 then -- lstore_1
+			idx = 1
+		elseif op == 0x41 then -- lstore_1
+			idx = 2
+		elseif op == 0x42 then -- lstore_3
+			idx = 3
+		end
+		-- lstore_0 doesn't have an if here as "idx" is by default set to 0
 		self.currentFrame.localVariables[idx+1] = self:popOperand()
 	elseif op == 0x3a or op == 0x4b or op == 0x4c or op == 0x4d or op == 0x4e then -- astore and astore_<n>
 		local idx = 0
@@ -248,10 +298,22 @@ function lib:execute(class, code)
 		local second = self:popOperand()[2]
 		local first = self:popOperand()[2]
 		self:pushOperand(types.new("int", first + second))
+	elseif op == 0x61 then -- ladd
+		local second = self:popOperand()[2]
+		local first = self:popOperand()[2]
+		self:pushOperand(types.new("long", first + second))
 	elseif op == 0x64 then -- isub
 		local second = self:popOperand()[2]
 		local first = self:popOperand()[2]
 		self:pushOperand(types.new("int", first - second))
+	elseif op == 0x65 then -- lsub
+		local second = self:popOperand()[2]
+		local first = self:popOperand()[2]
+		self:pushOperand(types.new("long", first - second))
+	elseif op == 0x6d then -- ldiv
+		local second = self:popOperand()[2]
+		local first = self:popOperand()[2]
+		self:pushOperand(types.new("long", math.floor(first / second)))
 	elseif op == 0x84 then -- iinc
 		local index = code[self.pc+1]
 		local const = string.unpack("b", string.char(code[self.pc+2]))
@@ -571,6 +633,22 @@ function lib:execute(class, code)
 	elseif op == 0xbe then -- arraylength
 		local arr = self:popOperand()
 		self:pushOperand(types.new("int", #arr[2].array))
+	elseif op == 0xc6 then -- ifnull
+		local branch = string.unpack(">i2", string.char(code[self.pc+1]) .. string.char(code[self.pc+2]))
+		local val = self:popOperand()
+		if val.type == "null" then
+			self.pc = self.pc + branch - 1
+		else
+			self.pc = self.pc + 2
+		end
+	elseif op == 0xc7 then -- ifnonnull
+		local branch = string.unpack(">i2", string.char(code[self.pc+1]) .. string.char(code[self.pc+2]))
+		local val = self:popOperand()[2]
+		if val.type ~= "null" then
+			self.pc = self.pc + branch - 1
+		else
+			self.pc = self.pc + 2
+		end
 	else
 		error("unknown opcode: 0x" .. string.format("%x", op))
 	end

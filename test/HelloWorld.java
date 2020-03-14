@@ -1,6 +1,6 @@
 public class HelloWorld {
 
-	public static void testLoop() {
+	public static void testLoop(int i) {
 		System.out.println("Test");
 	}
 
@@ -13,10 +13,17 @@ public class HelloWorld {
 		buf.append(" Java program!");
 		buf.append("\n");
 
+		System.out.println("OS name: " + System.getProperty("os.name"));
+
 		System.out.print(buf.toString());
+		long start = System.nanoTime();
 		for (int i = 0; i < 10; i++) {
-			testLoop();
+			testLoop(i);
+			System.gc();
 		}
+		long end = System.nanoTime();
+		long total = end - start;
+		System.out.println("Took: " + (total/1000) + "ms");
 	}
 	
 }
