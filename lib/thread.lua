@@ -136,6 +136,10 @@ function lib:execute(class, code)
 		self.pc = self.pc + 1
 		local byte = code[self.pc]
 		self:pushOperand(types.new("int", byte))
+	elseif op == 0x11 then -- sipush
+		local byte = (code[self.pc+1] << 8) | code[self.pc+1]
+		self:pushOperand(types.new("int", byte))
+		self.pc = self.pc + 2
 	elseif op == 0x12 then -- ldc
 		self.pc = self.pc + 1
 		local index = code[self.pc]
@@ -433,6 +437,27 @@ function lib:execute(class, code)
 			error("could not import " .. classPath .. ": " .. err)
 		end
 		local method, methodClass = findMethod(cl, nat.name.text, nat.descriptor.text)
+		self:executeMethod(methodClass, method, args)
+		self.pc = self.pc + 2
+	elseif op == 0xb8 then -- invokestatic
+		local index = (code[self.pc+1] << 8) | code[self.pc+2]
+		local nameAndTypeIndex = class.constantPool[index].nameAndTypeIndex
+		local nat = class.constantPool[nameAndTypeIndex]
+		printDebug("invokestatic " .. tostring(nat.name.text) .. tostring(nat.descriptor.text))
+
+		-- temporary / TODO use descriptors
+		local desc = types.readMethodDescriptor(nat.descriptor.text)
+		local argsCount = #desc.params
+		local args = {}
+		for i=1, argsCount do
+			table.insert(args, self:popOperand())
+		end
+		reverse(args)
+		local objectClass, err = classLoader.loadClass(class.constantPool[index].class.name.text, true)
+		if not objectClass then
+			error("could not import " .. class.constantPool[index].class.name.text .. ": " .. tostring(err))
+		end
+		local method, methodClass = findMethod(objectClass, nat.name.text, nat.descriptor.text)
 		self:executeMethod(methodClass, method, args)
 		self.pc = self.pc + 2
 	elseif op == 0xbb then -- new

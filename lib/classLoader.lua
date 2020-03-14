@@ -1,13 +1,21 @@
 local classLoader = {}
 local classCache = {}
 local initedClasses = {}
+classLoader.classpath = {"std/"}
 local class = require("class")
 local types = require("type")
 
 function classLoader.loadClass(path, init)
-	local cl, err = classLoader.loadExternalClass("std/" .. path .. ".class")
-	if cl and init and not initedClasses[cl] then
-		initedClasses[cl] = true
+	local cl, err
+	for _, v in pairs(classLoader.classpath) do
+		cl, err = classLoader.loadExternalClass(v .. path .. ".class")
+		if not cl and err ~= "not found" then error(err) end
+		if cl then
+			break
+		end
+	end
+	if cl and init and not initedClasses[path] then
+		initedClasses[path] = true
 		local clInit
 		for _,v in pairs(cl.methods) do
 			if v.name == "<clinit>" then
