@@ -13,12 +13,13 @@ public class StringBuffer {
 	}
 
 	public StringBuffer append(char[] chars) {
+		int oldLength = this.chars.length;
 		char[] newChars = new char[this.chars.length + chars.length];
-		for (int i = 0; i < this.chars.length; i++) {
+		for (int i = 0; i < newChars.length; i++) {
 			if (i < this.chars.length) {
 				newChars[i] = this.chars[i];
 			} else {
-				newChars[i] = chars[i-this.chars.length];
+				newChars[i] = chars[i-oldLength];
 			}
 		}
 		this.chars = newChars;

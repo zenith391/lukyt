@@ -185,17 +185,20 @@ function lib:execute(class, code)
 	elseif op == 0x34 then -- caload
 		local idx = self:popOperand()[2]
 		local array = self:popOperand()
+		if idx < 0 then
+			error("negativearrayindex: trying to set array with index " .. idx)
+		end
 		self:pushOperand(array[2].array[idx+1])
 	elseif op == 0x36 or op == 0x3b or op == 0x3c or op == 0x3d or op == 0x3e then -- istore and istore_<n>
 		local idx = 0
 		if op == 0x36 then
 			self.pc = self.pc + 1
 			idx = code[self.pc]
-		elseif op == 0x3c then -- iload_1
+		elseif op == 0x3c then -- istore_1
 			idx = 1
-		elseif op == 0x3d then -- iload_2
+		elseif op == 0x3d then -- istore_2
 			idx = 2
-		elseif op == 0x3e then -- iload_3
+		elseif op == 0x3e then -- istore_3
 			idx = 3
 		end
 		-- iload_0 doesn't have an if here as "idx" is by default set to 0
@@ -205,11 +208,11 @@ function lib:execute(class, code)
 		if op == 0x3a then
 			self.pc = self.pc + 1
 			idx = code[self.pc]
-		elseif op == 0x4c then -- aload_1
+		elseif op == 0x4c then -- astore_1
 			idx = 1
-		elseif op == 0x4d then -- aload_2
+		elseif op == 0x4d then -- astore_2
 			idx = 2
-		elseif op == 0x4e then -- aload_3
+		elseif op == 0x4e then -- astore_3
 			idx = 3
 		end
 		-- astore_0 doesn't have an if here as "idx" is by default set to 0
@@ -226,12 +229,12 @@ function lib:execute(class, code)
 		self:pushOperand(operand)
 		self:pushOperand(operand)
 	elseif op == 0x60 then -- iadd
-		local first = self:popOperand()[2]
 		local second = self:popOperand()[2]
+		local first = self:popOperand()[2]
 		self:pushOperand(types.new("int", first + second))
 	elseif op == 0x64 then -- isub
-		local first = self:popOperand()[2]
 		local second = self:popOperand()[2]
+		local first = self:popOperand()[2]
 		self:pushOperand(types.new("int", first - second))
 	elseif op == 0x84 then -- iinc
 		local index = code[self.pc+1]
@@ -446,7 +449,26 @@ function lib:execute(class, code)
 	elseif op == 0xbc then -- newarray
 		local atype = code[self.pc + 1]
 		local count = self:popOperand()[2]
-		self:pushOperand(types.referenceForArray({}))
+		local arr = {}
+		-- TODO: support other types
+		if atype == 5 then -- T_CHAR
+			for i=1,count do
+				table.insert(arr, types.new("char", 0))
+			end
+		elseif atype == 10 then -- T_INT
+			for i=1,count do
+				table.insert(arr, types.new("int", 0))
+			end
+		elseif atype == 9 then -- T_SHORT
+			for i=1,count do
+				table.insert(arr, types.new("short", 0))
+			end
+		elseif atype == 10 then -- T_FLOAT
+			for i=1,count do
+				table.insert(arr, types.new("float", 0.0))
+			end
+		end
+		self:pushOperand(types.referenceForArray(arr))
 		self.pc = self.pc + 1
 	elseif op == 0xbe then -- arraylength
 		local arr = self:popOperand()
