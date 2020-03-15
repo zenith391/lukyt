@@ -13,7 +13,7 @@ public class HelloWorld {
 
 		System.out.print(buf.toString());
 		long start = System.nanoTime();
-		for (int i = 0; i < 100; i++) {
+		for (int i = 0; i < 10; i++) {
 			System.out.println("Test " + (i+1));
 		}
 		long end = System.nanoTime();

@@ -54,6 +54,8 @@ function lib:executeMethod(class, method, parameters)
 		if self.currentFrame then
 			self:pushOperand(ret)
 		end
+	elseif method.code.jit then -- if the method has been transpiled by jit
+		method.code.jit(method, class, self, parameters)
 	else
 		local frame = self:pushNewFrame()
 		self:pushOperand(types.new("returnAddress", self.pc))

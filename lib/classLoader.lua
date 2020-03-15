@@ -1,7 +1,7 @@
 local classLoader = {}
 local classCache = {}
 local initedClasses = {}
-classLoader.classpath = {"std/"}
+classLoader.classpath = {}
 local class = require("class")
 local types = require("type")
 
