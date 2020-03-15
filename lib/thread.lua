@@ -116,8 +116,9 @@ local function ldc(self, constant)
 		local object = self:instantiateClass(objectClass, {types.referenceForArray(array)}, true, "([C)V")
 		self:pushOperand(object)
 	elseif constant.type == "long" or constant.type == "int" then
-		local value = constant.value
-		self:pushOperand(types.new("long", value))
+		self:pushOperand(types.new(constant.type, constant.value))
+	elseif constant.type == "float" or constant.type == "double" then
+		self:pushOperand(types.new(constant.type, constant.value))
 	end
 end
 
@@ -307,6 +308,10 @@ function lib:execute(class, code)
 		local second = self:popOperand()[2]
 		local first = self:popOperand()[2]
 		self:pushOperand(types.new("long", first - second))
+	elseif op == 0x6b then -- dmul
+		local second = self:popOperand()[2]
+		local first = self:popOperand()[2]
+		self:pushOperand(types.new("double", first * second))
 	elseif op == 0x6d then -- ldiv
 		local second = self:popOperand()[2]
 		local first = self:popOperand()[2]
@@ -329,9 +334,9 @@ function lib:execute(class, code)
 	elseif op == 0x8f then -- d2l
 		local operand = self:popOperand()
 		if types.type(operand) ~= "double" then
-			error()
+			error(types.type(operand) .. " is not a double")
 		end
-		local long = math.floor(operand)
+		local long = math.floor(operand[2])
 		self:pushOperand(types.new("long", long))
 	elseif op == 0x99 then -- ifeq
 		local branch = string.unpack(">i2", string.char(code[self.pc+1]) .. string.char(code[self.pc+2]))
@@ -438,10 +443,7 @@ function lib:execute(class, code)
 	elseif op == 0xa7 then -- goto
 		local branch = string.unpack(">i2", string.char(code[self.pc+1]) .. string.char(code[self.pc+2]))
 		self.pc = self.pc + branch - 1
-	elseif op == 0xac then -- ireturn
-		local ref = self:popOperand()
-		return ref
-	elseif op == 0xb0 then -- areturn
+	elseif op == 0xac or op == 0xad or op == 0xb0 then -- ireturn and lreturn and areturn
 		local ref = self:popOperand()
 		return ref
 	elseif op == 0xb1 then -- return
@@ -528,6 +530,9 @@ function lib:execute(class, code)
 		local ref = self:popOperand()
 		table.insert(args, ref)
 		reverse(args)
+		if ref[2].type == "null" then
+			error("NullReferenceException!") -- TODO: throw
+		end
 		local cl = ref[2].class[2].class
 		local method, methodClass = findMethod(cl, nat.name.text, nat.descriptor.text)
 		self:executeMethod(methodClass, method, args)

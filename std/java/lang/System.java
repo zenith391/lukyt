@@ -2,6 +2,7 @@ package java.lang;
 
 import java.io.PrintStream;
 import java.io.ConsolePrintStream;
+import lukyt.OS;
 
 public class System {
 
@@ -13,12 +14,16 @@ public class System {
 	/**
 		Note: the default Lua timer only haves second precision and thus, this function is NOT to be used for benchmarking
 	**/
-	public static native long currentTimeMillis();
+	public static long currentTimeMillis() {
+		return (long) (OS.time() * 1000);
+	}
 
 	/**
-		Note: based on the CPU time to allow much more precision
+		Note: based on the CPU time to allow more precision
 	**/
-	public static native long nanoTime();
+	public static long nanoTime() {
+		return (long) (OS.clock() * 1000000);
+	}
 
 	public static String getProperty(String key, String def) {
 		String value = getProperty(key);

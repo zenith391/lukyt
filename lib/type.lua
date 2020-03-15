@@ -108,7 +108,7 @@ end
 
 function lib.type(obj)
 	for k, v in pairs(typeMapping) do
-		if v == obj[0] then
+		if v == obj[1] then
 			return k
 		end
 	end

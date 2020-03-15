@@ -70,6 +70,10 @@ local function readConstantPools(stream)
 			})
 		elseif tag == 4 then -- CONSTANT_Float
 			local bytes = stream:read(4)
+			table.insert(constantPools, {
+				type = "float",
+				value = string.unpack(">f", bytes)
+			})
 		elseif tag == 5 then -- CONSTANT_Long
 			local highBytes = readU4(stream)
 			local lowBytes = readU4(stream)
@@ -84,8 +88,7 @@ local function readConstantPools(stream)
 			local lowBytes = stream:read(4)
 			table.insert(constantPools, {
 				type = "double",
-				highBytes = highBytes,
-				lowBytes = lowBytes
+				value = string.unpack(">d", highBytes .. lowBytes) -- just hope double is 64-bit on this Lua interpreter
 			})
 			table.insert(constantPools, {}) -- some padding
 			i = i + 1

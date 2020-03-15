@@ -9,9 +9,9 @@ public class HelloWorld {
 		buf.append(" Java program!");
 		buf.append("\n");
 
+		System.out.print(buf);
 		System.out.println("OS name: " + System.getProperty("os.name"));
 
-		System.out.print(buf.toString());
 		long start = System.nanoTime();
 		for (int i = 0; i < 10; i++) {
 			System.out.println("Test " + (i+1));
