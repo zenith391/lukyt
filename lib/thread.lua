@@ -23,12 +23,10 @@ function lib:operandStackDepth()
 end
 
 function lib:pushOperand(operand)
-	printDebug("push " .. self:operandStackDepth())
 	table.insert(self.currentFrame.operandStack, operand)
 end
 
 function lib:popOperand()
-	printDebug("pop! " .. self:operandStackDepth())
 	return table.remove(self.currentFrame.operandStack)
 end
 
@@ -107,7 +105,6 @@ end
 local function ldc(self, constant)
 	if constant.type == "string" then
 		local text = constant.text.text
-		printDebug("ldc \"" .. text .. "\"")
 		local objectClass, err = classLoader.loadClass("java/lang/String", true)
 		if not objectClass then
 			error("could not import java/lang/String !!! " .. err)
@@ -120,16 +117,14 @@ local function ldc(self, constant)
 		self:pushOperand(object)
 	elseif constant.type == "long" or constant.type == "int" then
 		local value = constant.value
-		printDebug("ldc " .. value)
 		self:pushOperand(types.new("long", value))
 	end
 end
 
 function lib:execute(class, code)
 	local op = code[self.pc]
-	printDebug("0x" .. string.format("%x", op) .. " @ 0x" .. string.format("%x", self.pc))
+	--printDebug("0x" .. string.format("%x", op) .. " @ 0x" .. string.format("%x", self.pc)) -- only enable for debug
 	if op == 0x0 then -- nop
-
 	elseif op == 0x1 then -- aconst_null
 		self:pushOperand(types.nullReference())
 	elseif op==0x2 or op==0x3 or op==0x4 or op==0x5 or op==0x6 or op==0x7 or op==0x8 then -- iconst_<i>
@@ -445,21 +440,17 @@ function lib:execute(class, code)
 		self.pc = self.pc + branch - 1
 	elseif op == 0xac then -- ireturn
 		local ref = self:popOperand()
-		printDebug("ireturn")
 		return ref
 	elseif op == 0xb0 then -- areturn
 		local ref = self:popOperand()
-		printDebug("areturn")
 		return ref
 	elseif op == 0xb1 then -- return
-		printDebug("return")
 		return false
 	elseif op == 0xb2 then -- getstatic
 		local index = (code[self.pc+1] << 8) | code[self.pc+2]
 		local nameAndTypeIndex = class.constantPool[index].nameAndTypeIndex
 		local nat = class.constantPool[nameAndTypeIndex]
 		local fieldClassPath = class.constantPool[index].class.name.text
-		printDebug("getstatic " .. fieldClassPath .. " " .. nat.name.text)
 		local fieldClass, err = classLoader.loadClass(fieldClassPath, true)
 		if not fieldClass then
 			error("could not import " .. fieldClassPath .. ": " .. err)
@@ -478,7 +469,6 @@ function lib:execute(class, code)
 		local nameAndTypeIndex = class.constantPool[index].nameAndTypeIndex
 		local nat = class.constantPool[nameAndTypeIndex]
 		local fieldClassPath = class.constantPool[index].class.name.text
-		printDebug("putstatic " .. fieldClassPath .. " " .. nat.name.text)
 		local fieldClass, err = classLoader.loadClass(fieldClassPath, true)
 		if not fieldClass then
 			error("could not import " .. fieldClassPath .. ": " .. err)
@@ -498,7 +488,6 @@ function lib:execute(class, code)
 		local nameAndTypeIndex = class.constantPool[index].nameAndTypeIndex
 		local nat = class.constantPool[nameAndTypeIndex]
 		local fieldClass = objectRef[2].class[2].class
-		printDebug("getfield " .. nat.name.text .. " on " .. fieldClass.name)
 		local field = nil
 		for k, v in pairs(fieldClass.fields) do
 			if v.name == nat.name.text then
@@ -515,7 +504,6 @@ function lib:execute(class, code)
 		local nameAndTypeIndex = class.constantPool[index].nameAndTypeIndex
 		local nat = class.constantPool[nameAndTypeIndex]
 		local fieldClass = objectRef[2].class[2].class
-		printDebug("putfield " .. nat.name.text)
 		local field = nil
 		for k, v in pairs(fieldClass.fields) do
 			if v.name == nat.name.text then
@@ -529,7 +517,6 @@ function lib:execute(class, code)
 		local index = (code[self.pc+1] << 8) | code[self.pc+2]
 		local nameAndTypeIndex = class.constantPool[index].nameAndTypeIndex
 		local nat = class.constantPool[nameAndTypeIndex]
-		printDebug("invokevirtual " .. tostring(nat.name.text) .. tostring(nat.descriptor.text))
 
 		-- temporary / TODO use descriptors
 		local desc = types.readMethodDescriptor(nat.descriptor.text)
@@ -549,7 +536,6 @@ function lib:execute(class, code)
 		local index = (code[self.pc+1] << 8) | code[self.pc+2]
 		local nameAndTypeIndex = class.constantPool[index].nameAndTypeIndex
 		local nat = class.constantPool[nameAndTypeIndex]
-		printDebug("invokespecial " .. tostring(nat.name.text) .. tostring(nat.descriptor.text))
 
 		-- temporary / TODO use descriptors
 		local desc = types.readMethodDescriptor(nat.descriptor.text)
@@ -573,7 +559,6 @@ function lib:execute(class, code)
 		local index = (code[self.pc+1] << 8) | code[self.pc+2]
 		local nameAndTypeIndex = class.constantPool[index].nameAndTypeIndex
 		local nat = class.constantPool[nameAndTypeIndex]
-		printDebug("invokestatic " .. tostring(nat.name.text) .. tostring(nat.descriptor.text))
 
 		-- temporary / TODO use descriptors
 		local desc = types.readMethodDescriptor(nat.descriptor.text)
@@ -593,7 +578,6 @@ function lib:execute(class, code)
 	elseif op == 0xbb then -- new
 		local index = (code[self.pc+1] << 8) | code[self.pc+2]
 		local classPath = class.constantPool[index].name.text
-		printDebug("new " .. classPath)
 		local objectClass, err = classLoader.loadClass(classPath, true)
 		if not objectClass then
 			error("could not import " .. classPath .. ": " .. tostring(err))
@@ -680,7 +664,6 @@ function lib:instantiateClass(class, parameters, doInit, initDescriptor)
 	end
 
 	if doInit and init then
-		printDebug("calling <init> on object (" .. class.name .. ")")
 		local params = {object}
 		if parameters then
 			for k, v in ipairs(parameters) do
