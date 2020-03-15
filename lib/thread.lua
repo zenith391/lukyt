@@ -308,14 +308,45 @@ function lib:execute(class, code)
 		local second = self:popOperand()[2]
 		local first = self:popOperand()[2]
 		self:pushOperand(types.new("long", first - second))
+	elseif op == 0x68 then -- imul
+		local second = self:popOperand()[2]
+		local first = self:popOperand()[2]
+		self:pushOperand(types.new("int", first * second))
 	elseif op == 0x6b then -- dmul
 		local second = self:popOperand()[2]
 		local first = self:popOperand()[2]
 		self:pushOperand(types.new("double", first * second))
+	elseif op == 0x6c then -- idiv
+		local second = self:popOperand()[2]
+		local first = self:popOperand()[2]
+		self:pushOperand(types.new("int", math.floor(first / second)))
 	elseif op == 0x6d then -- ldiv
 		local second = self:popOperand()[2]
 		local first = self:popOperand()[2]
 		self:pushOperand(types.new("long", math.floor(first / second)))
+	elseif op == 0x70 then -- irem
+		local second = self:popOperand()[2]
+		local first = self:popOperand()[2]
+		self:pushOperand(types.new("int", first - math.floor(first/second) * second))
+	elseif op == 0x74 then -- ineg
+		local value = self:popOperand()[2]
+		self:pushOperand(types.new("int", value * -1))
+	elseif op == 0x75 then -- ishl
+		local second = self:popOperand()[2]
+		local first = self:popOperand()[2]
+		self:pushOperand(types.new("int", first << (second & 0x1F)))
+	elseif op == 0x7a then -- ishr
+		local second = self:popOperand()[2]
+		local first = self:popOperand()[2]
+		self:pushOperand(types.new("int", first >> (second & 0x1F)))
+	elseif op == 0x7e then -- iand
+		local second = self:popOperand()[2]
+		local first = self:popOperand()[2]
+		self:pushOperand(types.new("int", first & second))
+	elseif op == 0x80 then -- ior
+		local second = self:popOperand()[2]
+		local first = self:popOperand()[2]
+		self:pushOperand(types.new("int", first | second))
 	elseif op == 0x84 then -- iinc
 		local index = code[self.pc+1]
 		local const = string.unpack("b", string.char(code[self.pc+2]))
@@ -327,9 +358,9 @@ function lib:execute(class, code)
 	elseif op == 0x8e then -- d2i
 		local operand = self:popOperand()
 		if types.type(operand) ~= "double" then
-			error()
+			error(types.type(operand) .. " is not a double")
 		end
-		local int = math.floor(operand)
+		local int = math.floor(operand[2])
 		self:pushOperand(types.new("int", int))
 	elseif op == 0x8f then -- d2l
 		local operand = self:popOperand()

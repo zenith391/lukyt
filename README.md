@@ -7,7 +7,7 @@ Features:
 - [ ] Standard library (will prob use GNU Classpath)
   - [x] System.out
   - [x] Some system methods
-- [ ] Int/short/byte/char math
+- [x] Int/short/byte/char math
 - [ ] Float math
 - [ ] Long/double math
 - [x] Classes
