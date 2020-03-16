@@ -10,12 +10,32 @@ function java_io_ConsolePrintStream_print(class, method, thread, args)
 	io.stdout:write(native.stringToLua(args[2]))
 end
 
-function java_lang_System_currentTimeMillis(class, method, thread, args)
-	return types.new("long", math.floor(os.time()*1000))
+function java_io_ConsoleInputStream_read(class, method, thread, args)
+	local ok, result = pcall(function()
+		return types.new("int", string.byte(io.read(1)))
+	end)
+	if ok then
+		return result
+	else
+		os.exit(0) -- user-trigerred interruption
+	end
 end
 
-function java_lang_System_nanoTime(class, method, thread, args)
-	return types.new("long", math.floor(os.clock()*1000000))
+function java_lang_System_arraycopy(class, method, thread, args)
+	local src = args[1][2]
+	local srcPos = args[2][2]
+	local dest = args[3][2]
+	local destPos = args[4][2]
+	local length = args[5][2]
+	if src.type ~= "array" then
+		error("src is not an array!")
+	elseif dest.type ~= "array" then
+		error("dest is not an array!")
+	end
+
+	for i=1,length do
+		dest.array[i+destPos] = src.array[i+srcPos]
+	end
 end
 
 function lukyt_OS_time()

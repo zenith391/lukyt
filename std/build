@@ -1,6 +1,3 @@
 #!/bin/sh
 export JAVA_COMPILE="/usr/lib/jvm/java-8-openjdk-amd64/bin/javac -Xlint:-options -source 1.2 -target 1.2"
-$JAVA_COMPILE java/lang/System.java java/lang/Object.java java/lang/StringBuffer.java
-$JAVA_COMPILE java/lang/String.java java/io/PrintStream.java java/io/ConsolePrintStream.java
-$JAVA_COMPILE java/lang/Runtime.java java/lang/Number.java java/lang/Long.java
-$JAVA_COMPILE lukyt/OS.java
+$JAVA_COMPILE java/lang/*.java java/io/*.java lukyt/*.java

@@ -13,15 +13,10 @@ public class StringBuffer {
 	}
 
 	public StringBuffer append(char[] chars) {
-		int oldLength = this.chars.length;
-		char[] newChars = new char[this.chars.length + chars.length];
-		for (int i = 0; i < newChars.length; i++) {
-			if (i < this.chars.length) {
-				newChars[i] = this.chars[i];
-			} else {
-				newChars[i] = chars[i-oldLength];
-			}
-		}
+		int orgLength = this.chars.length;
+		char[] newChars = new char[orgLength + chars.length];
+		System.arraycopy(this.chars, 0, newChars, 0, orgLength);
+		System.arraycopy(chars, 0, newChars, orgLength, chars.length);
 		this.chars = newChars;
 		return this;
 	}
@@ -34,6 +29,12 @@ public class StringBuffer {
 	public StringBuffer append(Object obj) {
 		append(obj.toString());
 		return this;
+	}
+
+	public StringBuffer append(char c) {
+		char[] array = new char[1];
+		array[0] = c;
+		return append(array);
 	}
 
 	public StringBuffer append(long l) {

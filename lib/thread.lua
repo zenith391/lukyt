@@ -372,6 +372,8 @@ function lib:execute(class, code)
 		end
 		local long = math.floor(operand[2])
 		self:pushOperand(types.new("long", long))
+	elseif op == 0x92 then -- i2c
+		self:pushOperand(types.new("char", self:popOperand()[2]))
 	elseif op == 0x99 then -- ifeq
 		local branch = string.unpack(">i2", string.char(code[self.pc+1]) .. string.char(code[self.pc+2]))
 		local val1 = self:popOperand()
@@ -422,8 +424,8 @@ function lib:execute(class, code)
 		end
 	elseif op == 0x9f then -- if_icmpeq
 		local branch = string.unpack(">i2", string.char(code[self.pc+1]) .. string.char(code[self.pc+2]))
-		local val2 = self:popOperand()
-		local val1 = self:popOperand()
+		local val2 = self:popOperand()[2]
+		local val1 = self:popOperand()[2]
 		if val1 == val2 then
 			self.pc = self.pc + branch - 1
 		else
@@ -576,7 +578,6 @@ function lib:execute(class, code)
 		local nameAndTypeIndex = class.constantPool[index].nameAndTypeIndex
 		local nat = class.constantPool[nameAndTypeIndex]
 
-		-- temporary / TODO use descriptors
 		local desc = types.readMethodDescriptor(nat.descriptor.text)
 		local argsCount = #desc.params
 		local args = {}
@@ -599,7 +600,6 @@ function lib:execute(class, code)
 		local nameAndTypeIndex = class.constantPool[index].nameAndTypeIndex
 		local nat = class.constantPool[nameAndTypeIndex]
 
-		-- temporary / TODO use descriptors
 		local desc = types.readMethodDescriptor(nat.descriptor.text)
 		local argsCount = #desc.params
 		local args = {}

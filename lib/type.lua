@@ -72,7 +72,7 @@ function lib.readFieldDescriptor(descriptor)
 		return {
 			type = "object",
 			className = className
-		}, 3+classNameEnd
+		}, 2+classNameEnd
 	elseif t == "[" then
 		local component, cpSubIndex = lib.readFieldDescriptor(descriptor:sub(2))
 		return {

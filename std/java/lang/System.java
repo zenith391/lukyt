@@ -1,15 +1,16 @@
 package java.lang;
 
-import java.io.PrintStream;
-import java.io.ConsolePrintStream;
+import java.io.*;
 import lukyt.OS;
 
 public class System {
 
-	public static final ConsolePrintStream out = new ConsolePrintStream();
+	public static final PrintStream out = new ConsolePrintStream();
+	public static final InputStream in = new ConsoleInputStream();
 
 	public static native String getenv(String name);
 	public static native String getProperty(String key);
+	public static native void arraycopy(Object src, int srcPos, Object dest, int destPos, int length);
 
 	/**
 		Note: the default Lua timer only haves second precision and thus, this function is NOT to be used for benchmarking

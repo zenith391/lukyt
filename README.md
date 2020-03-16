@@ -3,10 +3,10 @@ Lukyt is a JVM made in Lua supporting Java 1.2.
 It's main advantage is to currently have a very small startup time and overhead.
 
 Features:
-- [ ] While loops
-- [x] For loops (no iterator)
+- [x] While loops (technically should work)
+- [x] For loops
 - [x] Native support (integration from Lua side)
-- [ ] Standard library (will prob use GNU Classpath)
+- [ ] Standard library (will prob move to GNU Classpath)
   - [x] System.out
   - [x] Some system methods
   - [x] Basic PrintStreams
@@ -38,4 +38,4 @@ java -cp test HelloWorld
 
 You'll notice Lukyt seemingly takes less time to execute the HelloWorld program.
 This is because all the overhead of the JVM are not required on a program that small.
-However on small programs, Lukyt's small overhead and interpreter are able to execute the program fastly.
+So on small programs, Lukyt's small overhead and interpreter are able to execute the program fastly.

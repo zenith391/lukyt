@@ -18,6 +18,14 @@ public abstract class PrintStream {
 		print(obj.toString());
 	}
 
+	public void print(int i) {
+		print(Long.toString((long) i));
+	}
+
+	public void print(char c) {
+		print(new String(new char[] {c}));
+	}
+
 	public abstract void print(String str);
 
 }
