@@ -35,7 +35,7 @@ systemProperties = {
 	["java.vendor.url"] = "https://github.com/zenith391/lukyt",
 	["java.vm.specification.version"] = "2",
 	["java.vm.specification.vendor"] = "Oracle?",
-	["java.vm.specification.name"] = "J2SE",
+	["java.vm.specification.name"] = "Playground",
 	["java.vm.version"] = "0.1",
 	["java.vm.vendor"] = "Lukyt",
 	["java.vm.name"] = "Acapella",
@@ -79,6 +79,7 @@ for k, v in ipairs(args) do
 		end
 	elseif v:sub(1,2) == "-D" then
 		local equalsIndex = string.find(v, "=")
+		equalsIndex = equalsIndex or v:len()+1
 		local name = v:sub(3,equalsIndex-1)
 		local value = v:sub(equalsIndex+1)
 		if value:len() == 0 then

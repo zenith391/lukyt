@@ -302,6 +302,12 @@ function lib.read(stream)
 		methods = methods,
 		attributes = attributes
 	}
+	for _, v in pairs(methods) do
+		v.class = class
+	end
+	for _, v in pairs(fields) do
+		v.class = class
+	end
 	if class.superClassName then
 		class.superClass = require("classLoader").loadClass(class.superClassName)
 	end

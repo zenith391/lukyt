@@ -75,6 +75,9 @@ function lib:executeMethod(class, method, parameters)
 		if ret ~= false and self.currentFrame then
 			self:pushOperand(ret)
 		end
+		if jitEngine then
+			jitEngine.onExecute(method)
+		end
 	end
 end
 
@@ -165,7 +168,7 @@ function lib:execute(class, code)
 		local byte = code[self.pc]
 		self:pushOperand(types.new("int", byte))
 	elseif op == 0x11 then -- sipush
-		local byte = (code[self.pc+1] << 8) | code[self.pc+1]
+		local byte = (code[self.pc+1] << 8) | code[self.pc+2]
 		self:pushOperand(types.new("int", byte))
 		self.pc = self.pc + 2
 	elseif op == 0x12 then -- ldc
