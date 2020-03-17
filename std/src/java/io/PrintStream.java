@@ -10,6 +10,10 @@ public abstract class PrintStream {
 		println(Long.toString((long) i));
 	}
 
+	public void println() {
+		print("\n");
+	}
+
 	public void println(Object obj) {
 		print(obj.toString() + "\n");
 	}

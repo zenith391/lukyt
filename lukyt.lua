@@ -11,7 +11,7 @@ local file = nil
 local args = table.pack(...)
 local printHelp = true
 local cp = "./"
-local bcp = "./std/" -- bootstrap class path
+local bcp = "./std/bin/" -- bootstrap class path
 
 local osName = "Unknown"
 if package.cpath then
@@ -38,7 +38,7 @@ systemProperties = {
 	["java.vm.specification.name"] = "Playground",
 	["java.vm.version"] = "0.1",
 	["java.vm.vendor"] = "Lukyt",
-	["java.vm.name"] = "Acapella",
+	["java.vm.name"] = "Lukyt",
 	["java.class.version"] = "46.0",
 	["java.class.path"] = "", -- TODO
 	["java.library.path"] = "/;./",
@@ -72,6 +72,11 @@ for k, v in ipairs(args) do
 		if cp:sub(#cp,#cp) ~= "/" then
 			cp = cp .. "/"
 		end
+	elseif v:sub(1,5) == "--cp=" then
+		cp = v:sub(6)
+		if cp:sub(#cp,#cp) ~= "/" then
+			cp = cp .. "/"
+		end
 	elseif v:sub(1,22) == "--bootstrap-classpath=" then
 		bcp = v:sub(23)
 		if bcp:sub(#bcp,#bcp) ~= "/" then
@@ -86,9 +91,11 @@ for k, v in ipairs(args) do
 			value = "true"
 		end
 		systemProperties[name] = value
-	else
+	elseif not file then
 		file = v .. ".class"
 		printHelp = false
+	else
+		error("unrecognized argument: " .. v)
 	end
 end
 
@@ -100,8 +107,9 @@ if printHelp then
 	print("               Available: freqs, none")
 	print("  --classpath=path: Set the classpath to search non-bootstrap classes")
 	print("                    Default: ./")
+	print("  --cp=path: Short for --classpath=path")
 	print("  --bootstrap-classpath=path: Set the classpath to search bootstrap classes")
-	print("                               Default: ./std/")
+	print("                               Default: ./std/bin/")
 	print("  -Dname=value: Define Java system property")
 	print("                ex: -Dos.name=JEternal")
 	return

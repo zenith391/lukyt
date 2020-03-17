@@ -46,6 +46,11 @@ function lukyt_OS_clock()
 	return types.new("double", os.clock())
 end
 
+function java_lang_Object_hashCode(class, method, thread, args)
+	local this = args[1]
+	return types.new("int", this.hashCode)
+end
+
 function java_lang_System_getProperty(class, method, thread, args)
 	local key = args[1]
 	if key.type == "null" then

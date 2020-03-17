@@ -696,7 +696,8 @@ function lib:instantiateClass(class, parameters, doInit, initDescriptor)
 	local object = types.new("reference", {
 		type = "object",
 		object = {},
-		class = classReference
+		class = classReference,
+		hashCode = math.floor(math.random() * 0x7FFFFFFF)
 	})
 	for k, v in pairs(class.fields) do
 		object[2].object[v.name] = types.nullReference()

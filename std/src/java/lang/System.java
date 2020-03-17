@@ -35,6 +35,14 @@ public class System {
 		}
 	}
 
+	public static void load(String filename) {
+		Runtime.getRuntime().load(filename);
+	}
+
+	public static void loadLibrary(String libname) {
+		Runtime.getRuntime().loadLibrary(libname);
+	}
+
 	public static void gc() {
 		Runtime.getRuntime().gc();
 	}

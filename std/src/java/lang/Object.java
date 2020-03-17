@@ -10,7 +10,7 @@ public class Object {
 		return "some object";
 	}
 
-	public native int hashCode(); // TODO
+	public native int hashCode();
 	public native Class getClass(); // TODO
 
 }
