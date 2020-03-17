@@ -1,5 +1,7 @@
 package java.lang;
 
+import java.io.PrintStream;
+
 public class Throwable {
 
 	private String details;
@@ -15,7 +17,7 @@ public class Throwable {
 	}
 
 	public Throwable(Throwable cause) {
-		this(null, details);
+		this(null, cause);
 	}
 
 	public Throwable(String details, Throwable cause) {
@@ -45,6 +47,14 @@ public class Throwable {
 
 	public void printStackTrace() {
 		printStackTrace(System.out); // TODO: use System.err
+	}
+
+	public StackTraceElement[] getStackTrace() {
+		return elements;
+	}
+
+	public void setStackTrace(StackTraceElement[] stackTrace) {
+		elements = stackTrace;
 	}
 
 	public void printStackTrace(PrintStream s) {

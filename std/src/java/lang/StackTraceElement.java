@@ -1,6 +1,6 @@
 package java.lang;
 
-public StackTraceElement {
+public class StackTraceElement {
 	private String declaringClass;
 	private String methodName;
 	private String fileName;
@@ -37,7 +37,7 @@ public StackTraceElement {
 
 	public String toString() {
 		StringBuffer sb = new StringBuffer();
-		sb.append(className);
+		sb.append(declaringClass);
 		sb.append('.');
 		sb.append(getMethodName());
 		sb.append('(');

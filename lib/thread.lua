@@ -53,6 +53,7 @@ function lib:popFrame()
 end
 
 function lib:executeMethod(class, method, parameters)
+	class = method.class
 	if method.code.nativeName then -- native method
 		if not _ENV[method.code.nativeName] then
 			error("Unbound native method: " .. method.class.name .. "." .. method.name)
@@ -721,6 +722,12 @@ function lib:instantiateClass(class, parameters, doInit, initDescriptor)
 		end
 		self:executeMethod(class, init, params)
 	end
+
+	setmetatable(object, {
+		__gc = function()
+			mainThread:executeMethod(class, findMethod(class, "finalize", "()V"), {object})
+		end
+	})
 
 	return object
 end

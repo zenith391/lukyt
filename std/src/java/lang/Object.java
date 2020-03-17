@@ -7,10 +7,12 @@ public class Object {
 	}
 
 	public String toString() {
-		return "some object";
+		return "some object@" + hashCode();
 	}
 
+	protected void finalize() throws Throwable {}
+
 	public native int hashCode();
-	public native Class getClass(); // TODO
+	public final native Class getClass(); // TODO
 
 }
