@@ -1,6 +1,7 @@
 local lib = {}
 local types = require("type")
 
+-- big-endian stream Unsigned number operations
 local function readU1(stream)
 	return string.byte(stream:read(1))
 end
@@ -13,6 +14,7 @@ local function readU4(stream)
 	return (readU2(stream) << 16) | readU2(stream)
 end
 
+-- big-endian Table Unsigned number operations
 local function readU1T(str, off)
 	return string.byte(str:sub(off,off))
 end
@@ -25,7 +27,7 @@ local function readU4T(str, off)
 	return (readU2T(str, off) << 16) | readU2T(str, off+2)
 end
 
-local function readConstantPools(stream)
+local function readConstantPool(stream)
 	local constantPools = {}
 	local cpCount = readU2(stream)
 	printDebug(cpCount .. " constants in the constant pool")
@@ -166,7 +168,6 @@ local function readAttributes(stream, constantPools)
 		local nameIndex = readU2(stream)
 		local length = readU4(stream)
 		local bytes = stream:read(length)
-		--print("name: " .. constantPools[nameIndex].text .. ", bytes: " .. bytes)
 		attributes[constantPools[nameIndex].text] = bytes
 	end
 	return attributes
@@ -184,7 +185,7 @@ local function readFields(stream, constantPools)
 		local staticValue = types.nullReference()
 		if attributes["ConstantValue"] then
 			local index = (staticValue[1] << 8) | staticValue[2]
-			print(constantPools[nameIndex].text)
+			print(constantPools[nameIndex].text) -- some debug for constant values
 		end
 		table.insert(fields, {
 			accessFlags = accessFlags,
@@ -200,7 +201,7 @@ end
 local function getMethodCode(thisName, method)
 	if method.accessFlags & 0x100 == 0x100 then -- if ACC_NATIVE
 		return {
-			nativeName = thisName:gsub("/", "_") .. "_" .. method.name,
+			nativeName = thisName:gsub("/", "_") .. "_" .. method.name, -- the name of the native function to be called
 			maxStackSize = -1,
 			maxLocals = -1,
 			code = {}
@@ -265,7 +266,7 @@ function lib.read(stream)
 	if major > 46 then
 		error("unsupported Java version, support only up to 1.2")
 	end
-	local constantPools = readConstantPools(stream)
+	local constantPools = readConstantPool(stream)
 
 	local accessFlags = readU2(stream)
 	local thisName = constantPools[readU2(stream)].name.text

@@ -1,5 +1,5 @@
 local lib = {}
-local typeMapping = {
+local typeMapping = { -- use short types for less memory usage
 	byte = "B",
 	int = "I",
 	short = "S",

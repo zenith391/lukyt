@@ -6,13 +6,14 @@ function lib:createFrame()
 	local frame = {}
 	frame.localVariables = {}
 	frame.operandStack = {}
+	frame.opStackPointer = 1
 	return frame
 end
 
 function lib:operandStackDepth()
 	local depth = 0
-	for _, v in pairs(self.currentFrame.operandStack) do
-		local t = types.type(v)
+	for i=1, self.currentFrame.opStackPointer-1 do
+		local t = types.type(self.currentFrame.operandStack[i]);
 		if t == "double" or t == "long" then
 			depth = depth + 2
 		else
@@ -23,11 +24,19 @@ function lib:operandStackDepth()
 end
 
 function lib:pushOperand(operand)
-	table.insert(self.currentFrame.operandStack, operand)
+	if operand == nil then
+		return
+	end
+	local frame = self.currentFrame
+	frame.operandStack[frame.opStackPointer] = operand
+	frame.opStackPointer = frame.opStackPointer + 1
 end
 
 function lib:popOperand()
-	return table.remove(self.currentFrame.operandStack)
+	local frame = self.currentFrame
+	frame.opStackPointer = frame.opStackPointer - 1
+	local operand = frame.operandStack[frame.opStackPointer]
+	return operand
 end
 
 function lib:pushNewFrame()
@@ -46,7 +55,7 @@ end
 function lib:executeMethod(class, method, parameters)
 	if method.code.nativeName then -- native method
 		if not _ENV[method.code.nativeName] then
-			error("Missing native method: " .. method.code.nativeName)
+			error("Unbound native method: " .. method.class.name .. "." .. method.name)
 		end
 		local ret = _ENV[method.code.nativeName](class, method, self, parameters)
 		if self.currentFrame then
