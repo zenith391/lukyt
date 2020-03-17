@@ -32,9 +32,13 @@ public class HelloWorld {
 		total = end - start;
 		System.out.println("Took: " + (total/1000) + "ms");
 
+		System.out.println("Welcome to this.. testing program?");
+		System.out.println("Type \"throw\" to throw an exception");
+		System.out.println("Type \"woops\" to throw a catched exception");
 		while (true) {
 			String str = "";
 			char c = 0;
+			System.out.print("> ");
 			while (c != 10) {
 				try {
 					c = (char) System.in.read();
@@ -44,7 +48,16 @@ public class HelloWorld {
 				str = str + c;
 			}
 			System.out.print("You typed: " + str);
-			throw new Exception("test");
+			if (str.equals("throw\n")) {
+				throw new Exception("Test exception");
+			} else if (str.equals("woops\n")) {
+				try {
+					throw new Exception("Woops :/");
+				} catch (Exception e) {
+					System.out.println("Caught exception");
+					e.printStackTrace();
+				}
+			}
 		}
 	}
 	

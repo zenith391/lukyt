@@ -106,16 +106,20 @@ function lib:executeMethod(class, method, parameters)
 					throwable = self:instantiateException("java/lang/NullPointerException")
 				end
 				local foundHandler = false
-				for _, handler in pairs(method.code.exceptionHandlers) do
+				for _, handler in ipairs(method.code.exceptionHandlers) do
 					local subclass = false
-					if self.catchType == "any" then
+					if handler.catchClass == "any" then
 						subclass = true
 					else
-						subclass = lib.isSubclassOf(throwable[2].class[2].class)
+						subclass = lib.isSubclassOf(throwable[2].class[2].class, classLoader.loadClass(handler.catchClass, true))
 					end
-					if self.pc >= handler.startPc and self.pc < handler.endPc and subclass then
-						print("found handler")
+					if self.pc >= handler.startPc and self.pc <= handler.endPc and subclass then
 						foundHandler = true
+						self.pc = handler.handlerPc
+						self.currentFrame.operandStack = {}
+						self:pushOperand(throwable)
+						ret = true -- continue execution
+						throwable = nil
 					end
 				end
 				if not foundHandler then

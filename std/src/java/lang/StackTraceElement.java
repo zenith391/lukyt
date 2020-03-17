@@ -8,11 +8,15 @@ public class StackTraceElement {
 	private boolean nativeMethod;
 
 	public StackTraceElement(String declaringClass, String methodName, String fileName, int lineNumber) {
+		this(declaringClass, methodName, fileName, lineNumber, false);
+	}
+
+	public StackTraceElement(String declaringClass, String methodName, String fileName, int lineNumber, boolean nativeMethod) {
 		this.declaringClass = declaringClass;
 		this.methodName = methodName;
 		this.fileName = fileName;
 		this.lineNumber = lineNumber;
-		this.nativeMethod = false;
+		this.nativeMethod = nativeMethod;
 	}
 
 	public String getClassName() {
