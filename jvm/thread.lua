@@ -113,9 +113,9 @@ function lib:executeMethod(class, method, parameters)
 					else
 						subclass = lib.isSubclassOf(throwable[2].class[2].class, classLoader.loadClass(handler.catchClass, true))
 					end
-					if self.pc >= handler.startPc and self.pc <= handler.endPc and subclass then
+					if self.pc >= handler.startPc and self.pc < handler.endPc and subclass then
 						foundHandler = true
-						self.pc = handler.handlerPc
+						self.pc = handler.handlerPc - 1
 						self.currentFrame.operandStack = {}
 						self:pushOperand(throwable)
 						ret = true -- continue execution

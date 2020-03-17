@@ -239,9 +239,9 @@ local function getMethodCode(thisName, constantPool, method)
 	local start = 11 + codeLength - 8 -- minus 8 because "i" starts at 1
 	local exceptionHandlers = {}
 	for i=1, number do
-		local startPc = readU2T(attr, start+8*i)
-		local endPc = readU2T(attr, start+8*i+2)
-		local handlerPc = readU2T(attr, start+8*i+4)
+		local startPc = readU2T(attr, start+8*i) + 1
+		local endPc = readU2T(attr, start+8*i+2) + 1
+		local handlerPc = readU2T(attr, start+8*i+4) + 1
 		local catchType = readU2T(attr, start+8*i+6)
 		if catchType == 0 then
 			catchType = "any"

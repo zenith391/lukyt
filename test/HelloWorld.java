@@ -57,6 +57,8 @@ public class HelloWorld {
 					System.out.println("Caught exception");
 					e.printStackTrace();
 				}
+			} else if (str.equals("exit\n")) {
+				System.exit(0);
 			}
 		}
 	}
