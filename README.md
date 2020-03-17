@@ -1,6 +1,6 @@
 # Lukyt
 Lukyt is a JVM made in Lua supporting Java 1.2.
-It's main advantage is to currently have a very small startup time and overhead.
+It's main advantage is to currently have a very small startup time and use way much less memory.
 
 [Roadmap](https://github.com/zenith391/lukyt/projects/1)
 
@@ -20,6 +20,4 @@ which will give the same result as:
 java -cp test HelloWorld
 ```
 
-You'll notice Lukyt seemingly takes less time to execute the HelloWorld program.
-This is because all the overhead of the JVM are not required on a program that small.
-So on small programs, Lukyt's small overhead and interpreter are able to execute the program fastly.
+On my computer, the HelloWorld example used maximum 2.5MB while on the same computer, the OpenJDK's JVM used maximum 13MB.

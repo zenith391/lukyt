@@ -23,7 +23,7 @@ public class System {
 		Note: based on the CPU time to allow more precision
 	**/
 	public static long nanoTime() {
-		return (long) (OS.clock() * 1000000);
+		return (long) (OS.clock() * 1000000000);
 	}
 
 	public static String getProperty(String key, String def) {

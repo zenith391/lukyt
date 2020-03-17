@@ -22,7 +22,7 @@ public class HelloWorld {
 		}
 		long end = System.nanoTime();
 		long total = end - start;
-		System.out.println("Took: " + (total/1000) + "ms");
+		System.out.println("Took: " + (total/1000000) + "ms");
 
 		start = System.nanoTime();
 		for (int i = 0; i < 10; i++) {
@@ -30,7 +30,7 @@ public class HelloWorld {
 		}
 		end = System.nanoTime();
 		total = end - start;
-		System.out.println("Took: " + (total/1000) + "ms");
+		System.out.println("Took: " + (total/1000000) + "ms");
 
 		System.out.println("Welcome to this.. testing program?");
 		System.out.println("Type \"throw\" to throw an exception");

@@ -147,6 +147,7 @@ local throwable = mainThread:executeMethod(cl, mainMethod, {object, argsArray})
 
 if throwable then
 	local throwedClass = throwable[2].class[2].class
+	io.stdout:write("Exception in thread \"main\" ")
 	mainThread:executeMethod(throwedClass, thread.findMethod(throwedClass, "printStackTrace", "()V"), {throwable})
 end
 
