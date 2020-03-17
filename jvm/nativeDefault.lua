@@ -97,11 +97,12 @@ function java_lang_Throwable_currentStackTrace(class, method, thread, args)
 		error("could not import " .. path .. ": " .. err)
 	end
 
-	for k, v in ipairs(threadTrace) do
+	for i=#threadTrace,1,-1 do
+		local v = threadTrace[i]
 		local m = v.method
 		local declaringClass = native.luaToString(string.gsub(m.class.name, "/", "."), thread)
 		local methodName = native.luaToString(m.name, thread)
-		table.insert(stackTrace, thread:instantiateClass(objectClass, {}, true, "()V"))
+		table.insert(stackTrace, thread:instantiateClass(objectClass, {declaringClass, methodName, types.nullReference(), types.new("int", -1)}, true, "(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;I)V"))
 	end
 	return types.referenceForArray(stackTrace)
 end

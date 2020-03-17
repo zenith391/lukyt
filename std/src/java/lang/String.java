@@ -7,7 +7,7 @@ public class String {
 
 	public String(char[] chars) {
 		this.chars = chars;
-		intern();
+		//intern(); // temporaly disabled until solution to the immense delay when returning it is fixed
 	}
 
 	public String(String original) {
@@ -40,9 +40,7 @@ public class String {
 		}
 		// not found, insert the string
 		String[] newArray = new String[interned.length+1];
-		for (int i = 0; i < interned.length; i++) {
-			newArray[i] = interned[i];
-		}
+		System.arraycopy(interned, 0, newArray, 0, interned.length);
 		newArray[interned.length] = this;
 		interned = newArray;
 		return this;
@@ -59,6 +57,14 @@ public class String {
 			}
 		}
 		return true;
+	}
+
+	public int hashCode() {
+		int hashCode = 0;
+		for (int i = 0; i < chars.length; i++) {
+			hashCode += chars[i];
+		}
+		return hashCode;
 	}
 
 	public char[] toCharArray() {

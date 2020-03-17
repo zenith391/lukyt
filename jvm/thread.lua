@@ -436,7 +436,7 @@ function lib:execute(class, code)
 		self:pushOperand(types.new("char", self:popOperand()[2]))
 	elseif op == 0x99 then -- ifeq
 		local branch = string.unpack(">i2", string.char(code[self.pc+1]) .. string.char(code[self.pc+2]))
-		local val1 = self:popOperand()
+		local val1 = self:popOperand()[2]
 		if val1 == 0 then
 			self.pc = self.pc + branch - 1
 		else

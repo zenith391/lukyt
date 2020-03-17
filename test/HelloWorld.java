@@ -3,6 +3,7 @@ import java.io.IOException;
 public class HelloWorld {
 
 	public static void main(String[] args) throws Exception {
+		long start = System.nanoTime();
 		System.out.println("Hello, World!");
 
 		// String Buffer test
@@ -19,13 +20,16 @@ public class HelloWorld {
 		} else {
 			System.out.println("I am NOT running on Lukyt currently!");
 		}
+		long end = System.nanoTime();
+		long total = end - start;
+		System.out.println("Took: " + (total/1000) + "ms");
 
-		long start = System.nanoTime();
+		start = System.nanoTime();
 		for (int i = 0; i < 10; i++) {
 			System.out.println("Test " + (i+1));
 		}
-		long end = System.nanoTime();
-		long total = end - start;
+		end = System.nanoTime();
+		total = end - start;
 		System.out.println("Took: " + (total/1000) + "ms");
 
 		while (true) {
