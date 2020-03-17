@@ -1,4 +1,5 @@
-package.path = package.path .. ";./lib/?.lua"
+local oldPath = package.path
+package.path = package.path .. ";./jvm/?.lua"
 
 local doDebug = false
 function printDebug(...)
@@ -142,4 +143,12 @@ end
 
 local argsArray = types.referenceForArray({})
 printDebug("Calling main(String[])")
-mainThread:executeMethod(cl, mainMethod, {object, argsArray})
+local throwable = mainThread:executeMethod(cl, mainMethod, {object, argsArray})
+
+if throwable then
+	local throwedClass = throwable[2].class[2].class
+	print(throwedClass.methods)
+	mainThread:executeMethod(throwedClass, thread.findMethod(throwedClass, "printStackTrace", "()V"), {throwable})
+end
+
+package.path = oldPath

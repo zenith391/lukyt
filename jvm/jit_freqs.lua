@@ -661,6 +661,7 @@ function freqs.compile(method)
 		thread:pushOperand(ret)
 	end]]
 	print(out)
+	return out
 end
 
 function freqs.onExecute(method)
@@ -673,7 +674,7 @@ function freqs.onExecute(method)
 		if os.clock() > method.metricsNext then -- 1 second
 			print(method.class.name .. " " .. method.name .. method.descriptor .. ": " .. method.metrics)
 			if method.metrics > 3 then
-				freqs.compile(method)
+				method.code.jit = load(freqs.compile(method))
 			end
 			method.metrics = 0
 			method.metricsNext = os.clock()+0.001

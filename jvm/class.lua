@@ -198,7 +198,20 @@ local function readFields(stream, constantPools)
 	return fields
 end
 
-local function getMethodCode(thisName, method)
+local function getMethodExceptions(constantPool, method)
+	local attr = method.attributes["Exceptions"]
+	if not attr then
+		return {}
+	end
+	local number = readU2T(attr, 1)
+	local exceptions = {}
+	for i=1, number do
+		table.insert(exceptions, constantPool[readU2T(attr,1+i*2)])
+	end
+	return exceptions
+end
+
+local function getMethodCode(thisName, constantPool, method)
 	if method.accessFlags & 0x100 == 0x100 then -- if ACC_NATIVE
 		return {
 			nativeName = thisName:gsub("/", "_") .. "_" .. method.name, -- the name of the native function to be called
@@ -222,16 +235,36 @@ local function getMethodCode(thisName, method)
 	local maxLocals = readU2T(attr, 3)
 	local codeLength = readU4T(attr, 5)
 	local code = table.pack(table.unpack(table.pack(attr:byte(1,attr:len())), 9, 8+codeLength))
-	-- TODO: exceptions, attribute's attributes
+	local number = readU2T(attr, 9+codeLength)
+	local start = 11 + codeLength - 8 -- minus 8 because "i" starts at 1
+	local exceptionHandlers = {}
+	for i=1, number do
+		local startPc = readU2T(attr, start+8*i)
+		local endPc = readU2T(attr, start+8*i+2)
+		local handlerPc = readU2T(attr, start+8*i+4)
+		local catchType = readU2T(attr, start+8*i+6)
+		if catchType == 0 then
+			catchType = "any"
+		else
+			catchType = constantPool[catchType].name.text
+		end
+		table.insert(exceptionHandlers, {
+			startPc = startPc,
+			endPc = endPc,
+			handlerPc = handlerPc,
+			catchClass = catchType
+		})
+	end
 	return {
 		nativeName = nil,
 		maxStackSize = maxStack,
 		maxLocals = maxLocals,
-		code = code
+		code = code,
+		exceptionHandlers = exceptionHandlers
 	}
 end
 
-local function readMethods(stream, thisName, constantPools)
+local function readMethods(stream, thisName, constantPool)
 	local methods = {}
 	local methodsCount = readU2(stream)
 	printDebug(methodsCount .. " methods")
@@ -239,14 +272,15 @@ local function readMethods(stream, thisName, constantPools)
 		local accessFlags = readU2(stream)
 		local nameIndex = readU2(stream)
 		local descriptorIndex = readU2(stream)
- 		local attributes = readAttributes(stream, constantPools)
+ 		local attributes = readAttributes(stream, constantPool)
  		local method = {
  			accessFlags = accessFlags,
- 			name = constantPools[nameIndex].text,
- 			descriptor = constantPools[descriptorIndex].text,
+ 			name = constantPool[nameIndex].text,
+ 			descriptor = constantPool[descriptorIndex].text,
  			attributes = attributes
  		}
- 		method.code = getMethodCode(thisName, method)
+ 		method.code = getMethodCode(thisName, constantPool, method)
+ 		method.exceptions = getMethodExceptions(constantPool, method)
  		table.insert(methods, method)
 	end
 	return methods

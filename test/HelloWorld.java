@@ -2,7 +2,7 @@ import java.io.IOException;
 
 public class HelloWorld {
 
-	public static void main(String[] args) {
+	public static void main(String[] args) throws Exception {
 		System.out.println("Hello, World!");
 
 		// String Buffer test
@@ -40,6 +40,7 @@ public class HelloWorld {
 				str = str + c;
 			}
 			System.out.print("You typed: " + str);
+			throw new Exception("test");
 		}
 	}
 	

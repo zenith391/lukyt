@@ -87,3 +87,21 @@ function java_lang_Long_toString(class, method, thread, args)
 	local s = native.luaToString(tostring(args[1][2]), thread)
 	return s
 end
+
+function java_lang_Throwable_currentStackTrace(class, method, thread, args)
+	local stackTrace = {}
+	local threadTrace = thread.stackTrace
+
+	local objectClass, err = require("classLoader").loadClass("java/lang/StackTraceElement", true)
+	if not objectClass then
+		error("could not import " .. path .. ": " .. err)
+	end
+
+	for k, v in ipairs(threadTrace) do
+		local m = v.method
+		local declaringClass = native.luaToString(string.gsub(m.class.name, "/", "."), thread)
+		local methodName = native.luaToString(m.name, thread)
+		table.insert(stackTrace, thread:instantiateClass(objectClass, {}, true, "()V"))
+	end
+	return types.referenceForArray(stackTrace)
+end

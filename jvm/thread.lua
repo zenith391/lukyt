@@ -52,8 +52,33 @@ function lib:popFrame()
 	return lastFrame
 end
 
+function lib:instantiateException(path, details)
+	local objectClass, err = classLoader.loadClass(path, true)
+	if not objectClass then
+		error("could not import exception " .. path .. ": " .. err)
+	end
+
+	if details then
+		return self:instantiateClass(objectClass, {require("native").luaToString(details, self)}, true, "(Ljava/lang/String;)V")
+	else
+		return self:instantiateClass(objectClass, {}, true, "()V")
+	end
+end
+
+-- the function returns true if class "class" a subclass of "ofClass"
+function lib.isSubclassOf(class, ofClass)
+	if class == ofClass then
+		return true
+	elseif class.superClass then
+		return lib.isSubclassOf(class.superClass, ofClass)
+	end
+end
+
 function lib:executeMethod(class, method, parameters)
 	class = method.class
+	table.insert(self.stackTrace, {
+		method = method
+	})
 	if method.code.nativeName then -- native method
 		if not _ENV[method.code.nativeName] then
 			error("Unbound native method: " .. method.class.name .. "." .. method.name)
@@ -73,8 +98,31 @@ function lib:executeMethod(class, method, parameters)
 			frame.localVariables[k] = v
 		end
 		local ret = true
+		local throwable = nil
 		while ret == true do
-			ret = self:execute(class, code)
+			ret, throwable = self:execute(class, code)
+			if ret == "throwable" then
+				if not throwable then
+					throwable = self:instantiateException("java/lang/NullPointerException")
+				end
+				local foundHandler = false
+				for _, handler in pairs(method.code.exceptionHandlers) do
+					local subclass = false
+					if self.catchType == "any" then
+						subclass = true
+					else
+						subclass = lib.isSubclassOf(throwable[2].class[2].class)
+					end
+					if self.pc >= handler.startPc and self.pc < handler.endPc and subclass then
+						print("found handler")
+						foundHandler = true
+					end
+				end
+				if not foundHandler then
+					table.remove(self.stackTrace)
+					return throwable
+				end
+			end
 			self.pc = self.pc + 1
 		end
 		if self:operandStackDepth() ~= 1 then
@@ -89,6 +137,7 @@ function lib:executeMethod(class, method, parameters)
 			jitEngine.onExecute(method)
 		end
 	end
+	table.remove(self.stackTrace)
 end
 
 local function reverse(arr)
@@ -114,6 +163,7 @@ local function findMethod(class, name, desc)
 		error("could not find: " .. name .. " with descriptor " .. desc)
 	end
 end
+lib.findMethod = findMethod
 
 local function ldc(self, constant)
 	if constant.type == "string" then
@@ -533,9 +583,14 @@ function lib:execute(class, code)
 	elseif op == 0xb4 then -- getfield
 		local index = (code[self.pc+1] << 8) | code[self.pc+2]
 		local objectRef = self:popOperand()
-		local nameAndTypeIndex = class.constantPool[index].nameAndTypeIndex
+		local fieldConstant = class.constantPool[index]
+		local nameAndTypeIndex = fieldConstant.nameAndTypeIndex
 		local nat = class.constantPool[nameAndTypeIndex]
-		local fieldClass = objectRef[2].class[2].class
+		local classPath = fieldConstant.class.name.text
+		local fieldClass, err = classLoader.loadClass(classPath, true)
+		if not fieldClass then
+			error("could not import " .. classPath .. ": " .. err)
+		end
 		local field = nil
 		for k, v in pairs(fieldClass.fields) do
 			if v.name == nat.name.text then
@@ -549,9 +604,14 @@ function lib:execute(class, code)
 		local index = (code[self.pc+1] << 8) | code[self.pc+2]
 		local value = self:popOperand()
 		local objectRef = self:popOperand()
-		local nameAndTypeIndex = class.constantPool[index].nameAndTypeIndex
+		local fieldConstant = class.constantPool[index]
+		local nameAndTypeIndex = fieldConstant.nameAndTypeIndex
 		local nat = class.constantPool[nameAndTypeIndex]
-		local fieldClass = objectRef[2].class[2].class
+		local classPath = fieldConstant.class.name.text
+		local fieldClass, err = classLoader.loadClass(classPath, true)
+		if not fieldClass then
+			error("could not import " .. classPath .. ": " .. err)
+		end
 		local field = nil
 		for k, v in pairs(fieldClass.fields) do
 			if v.name == nat.name.text then
@@ -577,11 +637,14 @@ function lib:execute(class, code)
 		table.insert(args, ref)
 		reverse(args)
 		if ref[2].type == "null" then
-			error("NullReferenceException!") -- TODO: throw
+			return "throwable", self:instantiateException("java/lang/NullPointerException", "attempted to call method on nil")
 		end
 		local cl = ref[2].class[2].class
 		local method, methodClass = findMethod(cl, nat.name.text, nat.descriptor.text)
-		self:executeMethod(methodClass, method, args)
+		local throwable = self:executeMethod(methodClass, method, args)
+		if throwable then
+			return "throwable", throwable
+		end
 		self.pc = self.pc + 2
 	elseif op == 0xb7 then -- invokespecial
 		local index = (code[self.pc+1] << 8) | code[self.pc+2]
@@ -603,7 +666,10 @@ function lib:execute(class, code)
 			error("could not import " .. classPath .. ": " .. err)
 		end
 		local method, methodClass = findMethod(cl, nat.name.text, nat.descriptor.text)
-		self:executeMethod(methodClass, method, args)
+		local throwable = self:executeMethod(methodClass, method, args)
+		if throwable then
+			return "throwable", throwable
+		end
 		self.pc = self.pc + 2
 	elseif op == 0xb8 then -- invokestatic
 		local index = (code[self.pc+1] << 8) | code[self.pc+2]
@@ -622,7 +688,10 @@ function lib:execute(class, code)
 			error("could not import " .. class.constantPool[index].class.name.text .. ": " .. tostring(err))
 		end
 		local method, methodClass = findMethod(objectClass, nat.name.text, nat.descriptor.text)
-		self:executeMethod(methodClass, method, args)
+		local throwable = self:executeMethod(methodClass, method, args)
+		if throwable then
+			return "throwable", throwable
+		end
 		self.pc = self.pc + 2
 	elseif op == 0xbb then -- new
 		local index = (code[self.pc+1] << 8) | code[self.pc+2]
@@ -670,6 +739,10 @@ function lib:execute(class, code)
 	elseif op == 0xbe then -- arraylength
 		local arr = self:popOperand()
 		self:pushOperand(types.new("int", #arr[2].array))
+	elseif op == 0xbf then -- athrow
+		local throwable = self:popOperand()
+		-- TODO: check if it is subclass of Throwable
+		return "throwable", throwable
 	elseif op == 0xc6 then -- ifnull
 		local branch = string.unpack(">i2", string.char(code[self.pc+1]) .. string.char(code[self.pc+2]))
 		local val = self:popOperand()
@@ -738,7 +811,8 @@ function lib.new()
 		pc = 1,
 		stack = {},
 		currentFrame = nil,
-		heap = {}
+		heap = {},
+		stackTrace = {}
 	}, {
 		__index = lib
 	})
