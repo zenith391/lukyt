@@ -286,6 +286,14 @@ local function readMethods(stream, thisName, constantPool)
 	return methods
 end
 
+local function getSourceFile(constantPool, attributes)
+	local attr = attributes["SourceFile"]
+	if not attr then
+		return nil
+	end
+	return constantPool[readU2T(attr, 1)].text
+end
+
 local function getConstantValue(attribute)
 	return readU2T(attribute, 1)
 end
@@ -335,6 +343,7 @@ function lib.read(stream)
 		interfaces = {}, -- TODO
 		fields = fields,
 		methods = methods,
+		sourceFile = getSourceFile(constantPools, attributes),
 		attributes = attributes
 	}
 	for _, v in pairs(methods) do

@@ -102,8 +102,8 @@ function lib:executeMethod(class, method, parameters)
 		while ret == true do
 			ret, throwable = self:execute(class, code)
 			if ret == "throwable" then
-				if not throwable then
-					throwable = self:instantiateException("java/lang/NullPointerException")
+				if not throwable or throwable[2].type == "null" then
+					throwable = self:instantiateException("java/lang/NullPointerException", "attempted to throw a null value")
 				end
 				local foundHandler = false
 				for _, handler in ipairs(method.code.exceptionHandlers) do

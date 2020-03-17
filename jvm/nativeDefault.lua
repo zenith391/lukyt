@@ -102,12 +102,16 @@ function java_lang_Throwable_currentStackTrace(class, method, thread, args)
 		local m = v.method
 		local declaringClass = native.luaToString(string.gsub(m.class.name, "/", "."), thread)
 		local methodName = native.luaToString(m.name, thread)
+		local fileName = types.nullReference()
+		if m.class.sourceFile then
+			fileName = native.luaToString(m.class.sourceFile, thread)
+		end
 		local isNative = 0
 		if m.code.nativeName then
 			isNative = 1
 		end
 		isNative = types.new("I", isNative)
-		table.insert(stackTrace, thread:instantiateClass(objectClass, {declaringClass, methodName, types.nullReference(), types.new("int", -1), isNative}, true, "(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;IZ)V"))
+		table.insert(stackTrace, thread:instantiateClass(objectClass, {declaringClass, methodName, fileName, types.new("int", -1), isNative}, true, "(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;IZ)V"))
 	end
 	return types.referenceForArray(stackTrace)
 end

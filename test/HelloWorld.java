@@ -59,6 +59,8 @@ public class HelloWorld {
 				}
 			} else if (str.equals("exit\n")) {
 				System.exit(0);
+			} else if (str.equals("null\n")) {
+				throw null;
 			}
 		}
 	}
