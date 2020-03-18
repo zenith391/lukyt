@@ -305,8 +305,8 @@ function lib.read(stream)
 	local minor = readU2(stream)
 	local major = readU2(stream)
 	printDebug("Class Version: " .. major .. "." .. minor)
-	if major > 46 then
-		error("unsupported Java version, support only up to 1.2")
+	if major > 48 then
+		error("unsupported class version, Lukyt supports only up to 1.4")
 	end
 	local constantPools = readConstantPool(stream)
 

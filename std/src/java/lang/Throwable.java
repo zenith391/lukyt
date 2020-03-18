@@ -75,9 +75,9 @@ public class Throwable {
 
 	public String toString() {
 		if (getLocalizedMessage() == null) { // todo actually class of the exception
-			return "java.lang.Throwable";
+			return getClass().getName();
 		} else {
-			return "java.lang.Throwable: " + getLocalizedMessage();
+			return getClass().getName() + ": " + getLocalizedMessage();
 		}
 	}
 

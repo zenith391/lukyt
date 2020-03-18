@@ -67,6 +67,15 @@ public class String {
 		return hashCode;
 	}
 
+	public String replace(char org, char dst) {
+		for (int i = 0; i < chars.length; i++) {
+			if (chars[i] == org) {
+				chars[i] = dst;
+			}
+		}
+		return this;
+	}
+
 	public char[] toCharArray() {
 		return chars;
 	}

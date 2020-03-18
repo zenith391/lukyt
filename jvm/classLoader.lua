@@ -1,9 +1,25 @@
 local classLoader = {}
 local classCache = {}
 local initedClasses = {}
+classLoader.classReferences = {}
 classLoader.classpath = {}
 local class = require("class")
 local types = require("type")
+
+function classLoader.getReferencedClass(ref)
+	return classLoader.classReferences[ref];
+end
+
+function classLoader.classObject(class, thread)
+	local ref = -1
+	for k, v in pairs(classLoader.classReferences) do
+		if v == class then
+			ref = k
+		end
+	end
+	local classClass = classLoader.loadClass("java/lang/Class", true)
+	return thread:instantiateClass(classClass, {types.new("long", ref)}, true, "(J)V")
+end
 
 function classLoader.loadClass(path, init)
 	local cl, err
@@ -12,6 +28,17 @@ function classLoader.loadClass(path, init)
 		if not cl and err ~= "not found" then error(err) end
 		if cl then
 			break
+		end
+	end
+	if cl then
+		local contains = false
+		for k, v in pairs(classLoader.classReferences) do
+			if v == cl then
+				contains = true
+			end
+		end
+		if not contains then
+			table.insert(classLoader.classReferences, cl)
 		end
 	end
 	if cl and init and not initedClasses[path] then

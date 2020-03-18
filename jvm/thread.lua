@@ -74,6 +74,7 @@ function lib.isSubclassOf(class, ofClass)
 	end
 end
 
+local inc = 1
 function lib:executeMethod(class, method, parameters)
 	class = method.class
 	table.insert(self.stackTrace, {
@@ -100,7 +101,12 @@ function lib:executeMethod(class, method, parameters)
 		local ret = true
 		local throwable = nil
 		while ret == true do
+			if inc == 5 then
+				coroutine.yield()
+				inc = 0
+			end
 			ret, throwable = self:execute(class, code)
+			inc = inc + 1
 			if ret == "throwable" then
 				if not throwable or throwable[2].type == "null" then
 					throwable = self:instantiateException("java/lang/NullPointerException", "attempted to throw a null value")
@@ -647,7 +653,7 @@ function lib:execute(class, code)
 		local method, methodClass = findMethod(cl, nat.name.text, nat.descriptor.text)
 		local throwable = self:executeMethod(methodClass, method, args)
 		if throwable then
-			return "throwable", throwable
+			return "throwable", throwable -- re-throw catched exception
 		end
 		self.pc = self.pc + 2
 	elseif op == 0xb7 then -- invokespecial

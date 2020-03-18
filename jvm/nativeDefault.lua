@@ -2,6 +2,7 @@
 
 local native = require("native") -- native integration
 local types = require("type")
+local classLoader = require("classLoader")
 
 function java_io_ConsolePrintStream_print(class, method, thread, args)
 	if not args[2] then
@@ -114,4 +115,15 @@ function java_lang_Throwable_currentStackTrace(class, method, thread, args)
 		table.insert(stackTrace, thread:instantiateClass(objectClass, {declaringClass, methodName, fileName, types.new("int", -1), isNative}, true, "(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;IZ)V"))
 	end
 	return types.referenceForArray(stackTrace)
+end
+
+function java_lang_Object_getClass(class, method, thread, args)
+	local this = args[1][2]
+	local thisClass = this.class[2].class
+	return classLoader.classObject(thisClass, thread)
+end
+
+function java_lang_Class_getClassName(class, method, thread, args)
+	local ref = args[1][2]
+	return native.luaToString(classLoader.getReferencedClass(ref).name, thread)
 end
