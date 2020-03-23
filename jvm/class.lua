@@ -173,7 +173,7 @@ local function readAttributes(stream, constantPools)
 	return attributes
 end
 
-local function readFields(stream, constantPools)
+local function readFields(stream, constantPool)
 	local fields = {}
 	local fieldsCount = readU2(stream)
 	printDebug(fieldsCount .. " fields")
@@ -181,16 +181,20 @@ local function readFields(stream, constantPools)
 		local accessFlags = readU2(stream)
 		local nameIndex = readU2(stream)
 		local descriptorIndex = readU2(stream)
-		local attributes = readAttributes(stream, constantPools)
+		local attributes = readAttributes(stream, constantPool)
 		local staticValue = types.nullReference()
 		if attributes["ConstantValue"] then
-			local index = (staticValue[1] << 8) | staticValue[2]
-			print(constantPools[nameIndex].text) -- some debug for constant values
+			local value = getConstantValue(constantPool, attributes["ConstantValue"])
+			if value.type == "float" or value.type == "integer" or value.type == "long" or value.type == "double" then
+				staticValue = types.new(value.type, value)
+			elseif value.type == "string" then
+				staticValue = {"defer", value.text.text} -- the String will be instanced in the thread that initializes the class
+			end
 		end
 		table.insert(fields, {
 			accessFlags = accessFlags,
-			name = constantPools[nameIndex].text,
-			descriptor = constantPools[descriptorIndex].text,
+			name = constantPool[nameIndex].text,
+			descriptor = constantPool[descriptorIndex].text,
 			staticValue = staticValue,
 			attributes = attributes
 		})
@@ -294,8 +298,8 @@ local function getSourceFile(constantPool, attributes)
 	return constantPool[readU2T(attr, 1)].text
 end
 
-local function getConstantValue(attribute)
-	return readU2T(attribute, 1)
+local function getConstantValue(constantPool, attribute)
+	return constantPool[readU2T(attribute, 1)]
 end
 
 function lib.read(stream)

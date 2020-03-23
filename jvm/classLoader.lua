@@ -49,6 +49,11 @@ function classLoader.loadClass(path, init)
 				clInit = v
 			end
 		end
+		for _,v in pairs(cl.fields) do
+			if v.staticValue[1] == "defer" then
+				v.staticValue = require("native").luaToString(v.staticValue[2], mainThread)
+			end
+		end
 		local classReference = types.referenceForClass(cl)
 		if clInit then
 			mainThread:executeMethod(cl, clInit, {classReference})

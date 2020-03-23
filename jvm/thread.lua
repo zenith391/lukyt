@@ -102,7 +102,9 @@ function lib:executeMethod(class, method, parameters)
 		local throwable = nil
 		while ret == true do
 			if inc == 5 then
-				coroutine.yield()
+				if coroutine.isyieldable() then
+					coroutine.yield()
+				end
 				inc = 0
 			end
 			ret, throwable = self:execute(class, code)

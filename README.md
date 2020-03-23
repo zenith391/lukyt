@@ -1,5 +1,5 @@
 # Lukyt
-Lukyt is a JVM made in Lua supporting Java 1.2.
+Lukyt is a small JVM made in Lua supporting Java 1.4.
 It's main advantage is to currently have a very small startup time and use way much less memory.
 
 [Roadmap](https://github.com/zenith391/lukyt/projects/1)
