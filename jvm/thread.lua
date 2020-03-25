@@ -2,6 +2,8 @@ local lib = {}
 local types = require("type")
 local classLoader = require("classLoader")
 
+local INTERN_STRINGS = 1 -- can be disabled to gain a bit of performance in exchange of less standard compatiblity
+
 function lib:createFrame()
 	local frame = {}
 	frame.localVariables = {}
@@ -188,7 +190,7 @@ local function ldc(self, constant)
 		for i=1, #text do
 			table.insert(array, types.new("char", string.byte(text:sub(i,i))))
 		end
-		local object = self:instantiateClass(objectClass, {types.referenceForArray(array)}, true, "([C)V")
+		local object = self:instantiateClass(objectClass, {types.referenceForArray(array), types.new("int", INTERN_STRINGS)}, true, "([CZ)V")
 		self:pushOperand(object)
 	elseif constant.type == "long" or constant.type == "int" then
 		self:pushOperand(types.new(constant.type, constant.value))

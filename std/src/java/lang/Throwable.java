@@ -5,7 +5,7 @@ import java.io.PrintStream;
 public class Throwable {
 
 	private String details;
-	private Throwable cause; // yes it's in Java 1.4 but it's still end up here
+	private Throwable cause;
 	private StackTraceElement[] elements;
 
 	public Throwable() {

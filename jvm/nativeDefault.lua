@@ -3,6 +3,7 @@
 local native = require("native") -- native integration
 local types = require("type")
 local classLoader = require("classLoader")
+local internedStrings = {}
 
 function java_io_ConsolePrintStream_print(class, method, thread, args)
 	if not args[2] then
@@ -115,6 +116,23 @@ function java_lang_Throwable_currentStackTrace(class, method, thread, args)
 		table.insert(stackTrace, thread:instantiateClass(objectClass, {declaringClass, methodName, fileName, types.new("int", -1), isNative}, true, "(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;IZ)V"))
 	end
 	return types.referenceForArray(stackTrace)
+end
+
+function java_lang_String_intern(class, method, thread, args)
+	local this = args[1]
+	local luaRepresentation = native.stringToLua(this)
+	for k, v in pairs(internedStrings) do
+		if v[1] == luaRepresentation then
+			return v[2]
+		end
+	end
+	table.insert(internedStrings, {
+		{
+			luaRepresentation,
+			this
+		}
+	});
+	return this
 end
 
 function java_lang_Object_getClass(class, method, thread, args)

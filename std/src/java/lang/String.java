@@ -3,11 +3,16 @@ package java.lang;
 public class String {
 
 	private char[] chars; // not Unicode-proof
-	private static String[] interned = new String[0];
 
 	public String(char[] chars) {
 		this.chars = chars;
-		//intern(); // temporaly disabled until solution to the immense delay when returning it is fixed
+	}
+
+	String(char[] chars, boolean intern) {
+		this.chars = chars;
+		if (intern) {
+			intern();
+		}
 	}
 
 	public String(String original) {
@@ -32,19 +37,7 @@ public class String {
 		return buf.toString();
 	}
 
-	public String intern() {
-		for (int i = 0; i < interned.length; i++) {
-			if (this.equals(interned[i])) {
-				return interned[i];
-			}
-		}
-		// not found, insert the string
-		String[] newArray = new String[interned.length+1];
-		System.arraycopy(interned, 0, newArray, 0, interned.length);
-		newArray[interned.length] = this;
-		interned = newArray;
-		return this;
-	}
+	public native String intern();
 
 	public boolean equals(Object anObject) {
 		String other = anObject.toString();
@@ -78,6 +71,10 @@ public class String {
 
 	public char[] toCharArray() {
 		return chars;
+	}
+
+	public boolean isEmpty() {
+		return chars.length == 0;
 	}
 
 	public String toString() {
