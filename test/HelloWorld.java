@@ -1,4 +1,6 @@
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Iterator;
 
 public class HelloWorld {
 
@@ -32,6 +34,16 @@ public class HelloWorld {
 		total = end - start;
 		System.out.println("Took: " + (total/1000000) + "ms");
 
+		ArrayList list = new ArrayList();
+		list.add("Hello");
+		list.add("World");
+
+		System.out.println("List content:");
+		Iterator it = list.iterator();
+		for (Object o = null; it.hasNext(); o = it.next()) {
+			System.out.println(o);
+		}
+
 		System.out.println("Welcome to this.. testing program?");
 		System.out.println("Type \"throw\" to throw an exception");
 		System.out.println("Type \"woops\" to throw a catched exception");
@@ -61,6 +73,8 @@ public class HelloWorld {
 				System.exit(0);
 			} else if (str.equals("null\n")) {
 				throw null;
+			} else if (str.equals("gc\n")) {
+				System.gc();
 			}
 		}
 	}

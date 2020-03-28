@@ -10,12 +10,16 @@ public abstract class PrintStream {
 		println(Long.toString((long) i));
 	}
 
+	public void println(boolean b) {
+		println(String.valueOf(b));
+	}
+
 	public void println() {
 		print("\n");
 	}
 
 	public void println(Object obj) {
-		print(obj.toString() + "\n");
+		print(String.valueOf(obj) + "\n");
 	}
 
 	public void print(Object obj) {
@@ -28,6 +32,10 @@ public abstract class PrintStream {
 
 	public void print(char c) {
 		print(new String(new char[] {c}));
+	}
+
+	public void print(boolean b) {
+		print(String.valueOf(b));
 	}
 
 	public abstract void print(String str);

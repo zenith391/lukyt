@@ -135,7 +135,7 @@ function java_lang_String_intern(class, method, thread, args)
 	return this
 end
 
-function java_lang_Object_getClass(class, method, thread, args)
+function java_lang_Object_newClass(class, method, thread, args)
 	local this = args[1][2]
 	local thisClass = this.class[2].class
 	return classLoader.classObject(thisClass, thread)

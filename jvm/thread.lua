@@ -27,6 +27,7 @@ end
 
 function lib:pushOperand(operand)
 	if operand == nil then
+		error("attempt to push a nil value")
 		return
 	end
 	local frame = self.currentFrame
@@ -38,6 +39,7 @@ function lib:popOperand()
 	local frame = self.currentFrame
 	frame.opStackPointer = frame.opStackPointer - 1
 	local operand = frame.operandStack[frame.opStackPointer]
+	frame.operandStack[frame.opStackPointer] = nil
 	return operand
 end
 
@@ -50,6 +52,8 @@ end
 
 function lib:popFrame()
 	local lastFrame = table.remove(self.stack)
+	lastFrame.localVariables = nil
+	lastFrame.operandStack = nil
 	self.currentFrame = self.stack[#self.stack]
 	return lastFrame
 end
@@ -87,7 +91,7 @@ function lib:executeMethod(class, method, parameters)
 			error("Unbound native method: " .. method.class.name .. "." .. method.name)
 		end
 		local ret = _ENV[method.code.nativeName](class, method, self, parameters)
-		if self.currentFrame then
+		if self.currentFrame and ret then
 			self:pushOperand(ret)
 		end
 	elseif method.code.jit then -- if the method has been transpiled by jit
@@ -369,6 +373,12 @@ function lib:execute(class, code)
 		local operand = self:popOperand()
 		self:pushOperand(operand)
 		self:pushOperand(operand)
+	elseif op == 0x5a then -- dup_x1
+		local v1 = self:popOperand()
+		local v2 = self:popOperand()
+		self:pushOperand(v1)
+		self:pushOperand(v2)
+		self:pushOperand(v1)
 	elseif op == 0x60 then -- iadd
 		local second = self:popOperand()[2]
 		local first = self:popOperand()[2]
@@ -640,7 +650,6 @@ function lib:execute(class, code)
 		local nameAndTypeIndex = class.constantPool[index].nameAndTypeIndex
 		local nat = class.constantPool[nameAndTypeIndex]
 
-		-- temporary / TODO use descriptors
 		local desc = types.readMethodDescriptor(nat.descriptor.text)
 		local argsCount = #desc.params
 		local args = {}
@@ -707,6 +716,31 @@ function lib:execute(class, code)
 			return "throwable", throwable
 		end
 		self.pc = self.pc + 2
+	elseif op == 0xb9 then -- invokeinterface
+		local index = (code[self.pc+1] << 8) | code[self.pc+2]
+		local count = code[self.pc+3]
+		local nameAndTypeIndex = class.constantPool[index].nameAndTypeIndex
+		local nat = class.constantPool[nameAndTypeIndex]
+
+		local desc = types.readMethodDescriptor(nat.descriptor.text)
+		local argsCount = #desc.params
+		local args = {}
+		for i=1, argsCount do
+			table.insert(args, self:popOperand())
+		end
+		local ref = self:popOperand()
+		table.insert(args, ref)
+		reverse(args)
+		if ref[2].type == "null" then
+			return "throwable", self:instantiateException("java/lang/NullPointerException", "attempted to call method on nil")
+		end
+		local cl = ref[2].class[2].class
+		local method, methodClass = findMethod(cl, nat.name.text, nat.descriptor.text)
+		local throwable = self:executeMethod(methodClass, method, args)
+		if throwable then
+			return "throwable", throwable -- re-throw catched exception
+		end
+		self.pc = self.pc + 4
 	elseif op == 0xbb then -- new
 		local index = (code[self.pc+1] << 8) | code[self.pc+2]
 		local classPath = class.constantPool[index].name.text
@@ -779,6 +813,20 @@ function lib:execute(class, code)
 	return true
 end
 
+local function defaultFields(object, class)
+	for k, v in pairs(class.fields) do
+		if v.descriptor == "I" then
+			object[2].object[v.name] = types.new("int", 0)
+		else
+			object[2].object[v.name] = types.nullReference()
+		end
+	end
+	if class.superClass then
+		defaultFields(object, class.superClass)
+	end
+	return object
+end
+
 function lib:instantiateClass(class, parameters, doInit, initDescriptor)
 	local classReference = types.referenceForClass(class)
 	local object = types.new("reference", {
@@ -787,9 +835,7 @@ function lib:instantiateClass(class, parameters, doInit, initDescriptor)
 		class = classReference,
 		hashCode = math.floor(math.random() * 0x7FFFFFFF)
 	})
-	for k, v in pairs(class.fields) do
-		object[2].object[v.name] = types.nullReference()
-	end
+	defaultFields(object, class)
 	local init = nil
 	for _,v in pairs(class.methods) do
 		if doInit and not initDescriptor then

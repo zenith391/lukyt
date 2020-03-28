@@ -290,6 +290,18 @@ local function readMethods(stream, thisName, constantPool)
 	return methods
 end
 
+local function readInterfaces(stream, constantPool)
+	local interfaces = {}
+	local interfacesCount = readU2(stream)
+	for i=1, interfacesCount do
+		local classInfo = constantPool[readU2(stream)]
+ 		table.insert(interfaces, {
+ 			name = classInfo.name.text
+ 		})
+	end
+	return interfaces
+end
+
 local function getSourceFile(constantPool, attributes)
 	local attr = attributes["SourceFile"]
 	if not attr then
@@ -326,8 +338,7 @@ function lib.read(stream)
 		printDebug("Super class: none")
 	end
 	printDebug("--- Details ---")
-	local interfacesCount = readU2(stream)
-	printDebug(interfacesCount .. " interfaces")
+	local interfaces = readInterfaces(stream, constantPools)
 
 	local fields = readFields(stream, constantPools)
 	printDebug("--- Class Methods --- ")
