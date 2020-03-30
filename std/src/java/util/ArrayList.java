@@ -32,7 +32,7 @@ public class ArrayList extends AbstractList implements RandomAccess {
 	}
 
 	public Object set(int index, Object obj) {
-		if (index < 0 || index > size) {
+		if (index < 0 || index >= size) {
 			throw new IndexOutOfBoundsException(Integer.toString(index));
 		}
 		array[index] = obj;
@@ -41,7 +41,7 @@ public class ArrayList extends AbstractList implements RandomAccess {
 	}
 
 	public void add(int index, Object obj) {
-		if (index < 0 || index > size) {
+		if (index < 0 || index >= size) {
 			throw new IndexOutOfBoundsException(Integer.toString(index));
 		}
 		if (size + 1 > array.length)

@@ -15,7 +15,7 @@ end
 function lib:operandStackDepth()
 	local depth = 0
 	for i=1, self.currentFrame.opStackPointer-1 do
-		local t = types.type(self.currentFrame.operandStack[i]);
+		local t = types.type(self.currentFrame.operandStack[i])
 		if t == "double" or t == "long" then
 			depth = depth + 2
 		else
@@ -144,7 +144,7 @@ function lib:executeMethod(class, method, parameters)
 			self.pc = self.pc + 1
 		end
 		if self:operandStackDepth() ~= 1 then
-			error("operand stack was not cleaned before returning!")
+			error("operand stack was not cleaned before returning! (depth is " .. self:operandStackDepth() .. ")")
 		end
 		self.pc = self:popOperand()[2]
 		self:popFrame()
@@ -196,7 +196,7 @@ local function ldc(self, constant)
 		end
 		local object = self:instantiateClass(objectClass, {types.referenceForArray(array), types.new("int", INTERN_STRINGS)}, true, "([CZ)V")
 		self:pushOperand(object)
-	elseif constant.type == "long" or constant.type == "int" then
+	elseif constant.type == "long" or constant.type == "integer" then
 		self:pushOperand(types.new(constant.type, constant.value))
 	elseif constant.type == "float" or constant.type == "double" then
 		self:pushOperand(types.new(constant.type, constant.value))
@@ -791,6 +791,32 @@ function lib:execute(class, code)
 		local throwable = self:popOperand()
 		-- TODO: check if it is subclass of Throwable
 		return "throwable", throwable
+	elseif op == 0xc0 then -- checkcast
+		local index = (code[self.pc+1] << 8) | code[self.pc+2] -- no type checking yet
+		local ref = self:popOperand()
+		local className = class.constantPool[index].name.text
+		local cl = classLoader.loadClass(className, true)
+		if not cl then
+			-- TOOD: throw NoClassDefException
+		end
+		self:pushOperand(ref)
+		if ref[2].type == "array" then
+		end
+		local refClass = ref[2].class[2].class
+		self.pc = self.pc + 2
+		local doThrow = true
+		for k, v in pairs(refClass.interfaces) do
+			if v.name == className then
+				doThrow = false
+				break
+			end
+		end
+		if lib.isSubclassOf(refClass, cl) then
+			doThrow = false
+		end
+		if doThrow then
+			error("checkcast failed: todo throw exception")
+		end
 	elseif op == 0xc6 then -- ifnull
 		local branch = string.unpack(">i2", string.char(code[self.pc+1]) .. string.char(code[self.pc+2]))
 		local val = self:popOperand()

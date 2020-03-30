@@ -7,15 +7,7 @@ public class HelloWorld {
 	public static void main(String[] args) throws Exception {
 		long start = System.nanoTime();
 		System.out.println("Hello, World!");
-
-		// String Buffer test
-		StringBuffer buf = new StringBuffer("I'm a kind");
-		buf.append(new char[] {'.', '.', '.'});
-		buf.append(" Java program!");
-		buf.append("\n");
-
-		System.out.print(buf);
-		System.out.println("OS name: " + System.getProperty("os.name"));
+		System.out.println("OS kind: " + System.getProperty("os.name"));
 
 		if (System.getProperty("java.vendor").equals("Lukyt")) {
 			System.out.println("I am running on Lukyt currently!");
@@ -34,14 +26,13 @@ public class HelloWorld {
 		total = end - start;
 		System.out.println("Took: " + (total/1000000) + "ms");
 
-		ArrayList list = new ArrayList();
+		ArrayList<String> list = new ArrayList<String>();
 		list.add("Hello");
 		list.add("World");
 
 		System.out.println("List content:");
-		Iterator it = list.iterator();
-		for (Object o = null; it.hasNext(); o = it.next()) {
-			System.out.println(o);
+		for (String str : list) {
+			System.out.println("- " + str);
 		}
 
 		System.out.println("Welcome to this.. testing program?");

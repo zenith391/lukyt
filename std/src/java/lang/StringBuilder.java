@@ -1,18 +1,18 @@
 package java.lang;
 
-public class StringBuffer {
+public class StringBuilder {
 
 	public char[] chars;
 
-	public StringBuffer() {
+	public StringBuilder() {
 		chars = new char[0];
 	}
 
-	public StringBuffer(String str) {
+	public StringBuilder(String str) {
 		chars = str.toCharArray();
 	}
 
-	public StringBuffer append(char[] chars) {
+	public StringBuilder append(char[] chars) {
 		int orgLength = this.chars.length;
 		char[] newChars = new char[orgLength + chars.length];
 		System.arraycopy(this.chars, 0, newChars, 0, orgLength);
@@ -21,27 +21,27 @@ public class StringBuffer {
 		return this;
 	}
 
-	public StringBuffer append(String str) {
+	public StringBuilder append(String str) {
 		append(str.toCharArray());
 		return this;
 	}
 
-	public StringBuffer append(Object obj) {
+	public StringBuilder append(Object obj) {
 		append(String.valueOf(obj));
 		return this;
 	}
 
-	public StringBuffer append(char c) {
+	public StringBuilder append(char c) {
 		char[] array = new char[1];
 		array[0] = c;
 		return append(array);
 	}
 
-	public StringBuffer append(long l) {
+	public StringBuilder append(long l) {
 		return append(Long.toString(l));
 	}
 
-	public StringBuffer append(int i) {
+	public StringBuilder append(int i) {
 		return append((long) i);
 	}
 

@@ -1,32 +1,34 @@
 package java.util;
 
-public abstract class AbstractList extends AbstractCollection implements List {
+public abstract class AbstractList<E> extends AbstractCollection<E> implements List<E> {
 
 	protected transient int modCount;
 
-	public abstract Object get(int index);
+	public abstract E get(int index);
 	public abstract int size();
 
 	protected AbstractList() {
 		modCount = 0;
 	}
 
-	public ListIterator listIterator() {
-		return new AbstractListIterator(this, 0);
+	public ListIterator<E> listIterator() {
+		return new AbstractListIterator<E>(this, 0);
 	}
 
-	public ListIterator listIterator(int start) {
-		return new AbstractListIterator(this, start);
+	public ListIterator<E> listIterator(int start) {
+		return new AbstractListIterator<E>(this, start);
 	}
 
-	public Iterator iterator() {
-		return (Iterator) new AbstractListIterator(this, 0);
+	public Iterator<E> iterator() {
+		return (Iterator<E>) new AbstractListIterator<E>(this, 0);
 	}
 
 	public int indexOf(Object obj) {
 		ListIterator iterator = listIterator();
+		Object o = null;
 		int i = 0;
-		for (Object o = null; iterator.hasNext(); o = iterator.next()) {
+		while (iterator.hasNext()) {
+			o = iterator.next();
 			if (o.equals(obj)) {
 				return i;
 			}
@@ -37,8 +39,10 @@ public abstract class AbstractList extends AbstractCollection implements List {
 
 	public int lastIndexOf(Object obj) {
 		ListIterator iterator = listIterator(size());
+		Object o = null;
 		int i = 0;
-		for (Object o = null; iterator.hasPrevious(); o = iterator.previous()) {
+		while (iterator.hasPrevious()) {
+			o = iterator.previous();
 			if (o.equals(obj)) {
 				return i;
 			}
@@ -57,12 +61,12 @@ public abstract class AbstractList extends AbstractCollection implements List {
 		}
 	}
 
-	public boolean addAll(int index, Collection c) {
+	public boolean addAll(int index, Collection<? extends E> c) {
 		return false; // TODO
 	}
 
-	public List subList(int fromIndex, int toIndex) {
-		return new AbstractSubList(this, fromIndex, toIndex);
+	public List<E> subList(int fromIndex, int toIndex) {
+		return new AbstractSubList<E>(this, fromIndex, toIndex);
 	}
 
 	public boolean add(Object obj) {
@@ -88,7 +92,7 @@ public abstract class AbstractList extends AbstractCollection implements List {
 		}
 	}
 
-	public Object set(int index, Object obj) {
+	public E set(int index, Object obj) {
 		throw new UnsupportedOperationException();
 	}
 
@@ -96,26 +100,26 @@ public abstract class AbstractList extends AbstractCollection implements List {
 		throw new UnsupportedOperationException();
 	}
 
-	public Object remove(int index) {
+	public E remove(int index) {
 		throw new UnsupportedOperationException();
 	}
 
-	class AbstractSubList extends AbstractList {
+	class AbstractSubList<E> extends AbstractList<E> {
 		private int from;
 		private int to;
-		private AbstractList list;
+		private AbstractList<E> list;
 
-		public AbstractSubList(AbstractList list, int from, int to) {
+		public AbstractSubList(AbstractList<E> list, int from, int to) {
 			this.list = list;
 			this.from = from;
 			this.to = to;
 		}
 
-		public Object get(int index) {
+		public E get(int index) {
 			return list.get(index + from);
 		}
 
-		public Object set(int index, Object obj) {
+		public E set(int index, Object obj) {
 			return list.set(index + from, obj);
 		}
 
@@ -123,7 +127,7 @@ public abstract class AbstractList extends AbstractCollection implements List {
 			list.add(index + from, obj);
 		}
 
-		public Object remove(int index) {
+		public E remove(int index) {
 			return list.remove(index + from);
 		}
 
@@ -132,12 +136,12 @@ public abstract class AbstractList extends AbstractCollection implements List {
 		}
 	}
 
-	class AbstractListIterator implements ListIterator {
-		private AbstractList list;
+	class AbstractListIterator<T> implements ListIterator<T> {
+		private AbstractList<T> list;
 		private int cur;
 		private int expectedModCount;
 
-		public AbstractListIterator(AbstractList list, int start) {
+		public AbstractListIterator(AbstractList<T> list, int start) {
 			this.list = list;
 			this.expectedModCount = list.modCount;
 			this.cur = start;
@@ -159,14 +163,14 @@ public abstract class AbstractList extends AbstractCollection implements List {
 			return cur + 1;
 		}
 
-		public void set(Object obj) {
+		public void set(T obj) {
 			if (list.modCount != expectedModCount)
 				throw new ConcurrentModificationException();
 			list.set(cur, obj);
 			expectedModCount = list.modCount;
 		}
 
-		public void add(Object obj) {
+		public void add(T obj) {
 			if (list.modCount != expectedModCount)
 				throw new ConcurrentModificationException();
 			list.add(cur, obj);
@@ -180,13 +184,13 @@ public abstract class AbstractList extends AbstractCollection implements List {
 			expectedModCount = list.modCount;
 		}
 
-		public Object next() {
+		public T next() {
 			if (list.modCount != expectedModCount)
 				throw new ConcurrentModificationException();
 			return list.get(cur++);
 		}
 
-		public Object previous() {
+		public T previous() {
 			if (list.modCount != expectedModCount)
 				throw new ConcurrentModificationException();
 			return list.get(cur--);

@@ -1,7 +1,7 @@
 package java.util;
 
-public abstract class AbstractCollection implements Collection {
-	public abstract Iterator iterator();
+public abstract class AbstractCollection<E> implements Collection<E> {
+	public abstract Iterator<E> iterator();
 	public abstract int size();
 
 	public boolean isEmpty() {
@@ -9,7 +9,7 @@ public abstract class AbstractCollection implements Collection {
 	}
 
 	public boolean contains(Object o) {
-		Iterator iterator = iterator();
+		Iterator<E> iterator = iterator();
 		while (iterator.hasNext()) {
 			if (o == null) {
 				if (iterator.next() == null)
@@ -26,19 +26,19 @@ public abstract class AbstractCollection implements Collection {
 		return toArray(new Object[size()]);
 	}
 
-	public Object[] toArray(Object[] array) {
+	public <T> T[] toArray(T[] array) {
 		int size = size();
 		if (array.length < size) {
-			array = new Object[size];
+			array = (T[]) new Object[size];
 		}
-		Iterator iterator = iterator();
+		Iterator<E> iterator = iterator();
 		for (int i = 0; i < size; i++) {
-			array[i] = iterator.next();
+			array[i] = (T) iterator.next();
 		}
 		return array;
 	}
 
-	public boolean add(Object obj) {
+	public boolean add(E obj) {
 		throw new UnsupportedOperationException();
 	}
 
@@ -46,8 +46,8 @@ public abstract class AbstractCollection implements Collection {
 		throw new UnsupportedOperationException();
 	}
 
-	public boolean remove(Object obj) {
-		Iterator iterator = iterator();
+	public boolean remove(E obj) {
+		Iterator<E> iterator = iterator();
 		while (iterator.hasNext()) {
 			if (obj == null) {
 				if (iterator.next() == null) {
@@ -64,8 +64,8 @@ public abstract class AbstractCollection implements Collection {
 		return false;
 	}
 
-	public boolean containsAll(Collection c) {
-		Iterator iterator = c.iterator();
+	public boolean containsAll(Collection<?> c) {
+		Iterator<?> iterator = c.iterator();
 		while (iterator.hasNext()) {
 			if (!contains(iterator.next())) {
 				return false;
@@ -74,8 +74,8 @@ public abstract class AbstractCollection implements Collection {
 		return true;
 	}
 
-	public boolean addAll(Collection c) {
-		Iterator iterator = c.iterator();
+	public boolean addAll(Collection<? extends E> c) {
+		Iterator<? extends E> iterator = c.iterator();
 		boolean s = true;
 		while (iterator.hasNext()) {
 			add(iterator.next());
@@ -83,15 +83,15 @@ public abstract class AbstractCollection implements Collection {
 		return true;
 	}
 
-	public boolean removeAll(Collection c) {
-		Iterator iterator = c.iterator();
+	public boolean removeAll(Collection<?> c) {
+		Iterator<?> iterator = c.iterator();
 		while (iterator.hasNext()) {
-			remove(iterator.next());
+			remove((E) iterator.next());
 		}
 		return true;
 	}
 
-	public boolean retainAll(Collection c) {
+	public boolean retainAll(Collection<?> c) {
 		return false; // TODO
 	}
 

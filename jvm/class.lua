@@ -173,6 +173,83 @@ local function readAttributes(stream, constantPools)
 	return attributes
 end
 
+local function readElementValue(constantPool, data, pos)
+	local tag = data[pos]
+	if tag=="B" or tag=="C" or tag=="D" or tag=="F" or tag=="I" or tag=="J" or tag=="S" or tag=="Z" or tag=="s" then
+		return {
+			tag = tag,
+			const = constantPool[readU2T(pos+1)]
+		}, 3
+	elseif tag == "e" then -- enum
+		return {
+			tag = tag,
+			type = readU2T(pos+1),
+			const = readU2T(pos+3)
+		}, 5
+	elseif tag == "c" then -- class
+		return {
+			tag = tag,
+			class = constantPool[readU2T(pos+1)]
+		}, 3
+	elseif tag == "@" then -- annotation
+		local annot, inc = readAnnotation(constantPool, data, pos+1)
+		return {
+			tag = tag,
+			annotation = annot
+		}, 1 + inc
+	elseif tag == "[" then -- array
+		local num = readU2T(pos + 1)
+		local values = {}
+		local inc = 3
+		for i=1, num do
+			local elemValue, inc = readElementValue(constantPool, data, pos+inc)
+			table.insert(values, elemValue)
+			inc = inc + inc
+		end
+		return {
+			tag = tag,
+			array = values
+		}, inc
+	end
+end
+
+local function readAnnotation(constantPool, data, pos)
+	local length = 4
+	local typeName = constantPool[readU2T(data, pos)]
+	local numPairs = readU2T(data, pos+2)
+	local elementValuePairs = {}
+	for i=1, numPairs do
+		local elemName = constantPool[readU2T(data, length)]
+		length = length + 2
+		local value, inc = readElementValue(constantPool, data, pos+length)
+		length = length + inc
+		table.insert(elementValuePairs, {
+			name = elemName,
+			value = value
+		})
+	end
+	return {
+		typeName = typeName,
+		elemValuePairs = elementValuePairs
+	}, pos + length
+end
+
+local function getRuntimeAnnotations(constantPool, attribute)
+	local annotations = {}
+	local numAnnots = readU2T(attribute, 1)
+	local pos = 3
+	for i=1, numAnnots do
+		local annot, inc = readAnnotation(constantPool, attribute, pos)
+		pos = pos + inc
+		table.insert(annotations, annot)
+	end
+	return annotations
+end
+
+local function getConstantValue(constantPool, attribute)
+	return constantPool[readU2T(attribute, 1)]
+end
+
 local function readFields(stream, constantPool)
 	local fields = {}
 	local fieldsCount = readU2(stream)
@@ -276,16 +353,20 @@ local function readMethods(stream, thisName, constantPool)
 		local accessFlags = readU2(stream)
 		local nameIndex = readU2(stream)
 		local descriptorIndex = readU2(stream)
- 		local attributes = readAttributes(stream, constantPool)
- 		local method = {
- 			accessFlags = accessFlags,
- 			name = constantPool[nameIndex].text,
- 			descriptor = constantPool[descriptorIndex].text,
- 			attributes = attributes
- 		}
- 		method.code = getMethodCode(thisName, constantPool, method)
- 		method.exceptions = getMethodExceptions(constantPool, method)
- 		table.insert(methods, method)
+		local attributes = readAttributes(stream, constantPool)
+		local method = {
+			accessFlags = accessFlags,
+			name = constantPool[nameIndex].text,
+			descriptor = constantPool[descriptorIndex].text,
+			attributes = attributes,
+			annotations = {}
+		}
+		method.code = getMethodCode(thisName, constantPool, method)
+		method.exceptions = getMethodExceptions(constantPool, method)
+		if attributes["RuntimeVisibleAnnotations"] then
+			method.annotations = getRuntimeAnnotations(constantPool, attributes["RuntimeVisibleAnnotations"])
+		end
+		table.insert(methods, method)
 	end
 	return methods
 end
@@ -295,9 +376,9 @@ local function readInterfaces(stream, constantPool)
 	local interfacesCount = readU2(stream)
 	for i=1, interfacesCount do
 		local classInfo = constantPool[readU2(stream)]
- 		table.insert(interfaces, {
- 			name = classInfo.name.text
- 		})
+		table.insert(interfaces, {
+			name = classInfo.name.text
+		})
 	end
 	return interfaces
 end
@@ -310,10 +391,6 @@ local function getSourceFile(constantPool, attributes)
 	return constantPool[readU2T(attr, 1)].text
 end
 
-local function getConstantValue(constantPool, attribute)
-	return constantPool[readU2T(attribute, 1)]
-end
-
 function lib.read(stream)
 	if readU4(stream) ~= 0xCAFEBABE then
 		error("invalid signature")
@@ -321,8 +398,8 @@ function lib.read(stream)
 	local minor = readU2(stream)
 	local major = readU2(stream)
 	printDebug("Class Version: " .. major .. "." .. minor)
-	if major > 48 then
-		error("unsupported class version, Lukyt supports only up to 1.4")
+	if major > 49 then
+		error("unsupported class version, Lukyt supports only up to Java 5")
 	end
 	local constantPools = readConstantPool(stream)
 
@@ -339,7 +416,6 @@ function lib.read(stream)
 	end
 	printDebug("--- Details ---")
 	local interfaces = readInterfaces(stream, constantPools)
-
 	local fields = readFields(stream, constantPools)
 	printDebug("--- Class Methods --- ")
 	local methods = readMethods(stream, thisName, constantPools)
@@ -355,7 +431,7 @@ function lib.read(stream)
 		accessFlags = accessFlags,
 		name = thisName,
 		superClassName = superName,
-		interfaces = {}, -- TODO
+		interfaces = interfaces,
 		fields = fields,
 		methods = methods,
 		sourceFile = getSourceFile(constantPools, attributes),
