@@ -34,7 +34,7 @@ public class HelloWorld {
 		for (String str : list) {
 			System.out.println("- " + str);
 		}
-
+		System.out.println("String class: " + String.class.getName());
 		System.out.println("Welcome to this.. testing program?");
 		System.out.println("Type \"throw\" to throw an exception");
 		System.out.println("Type \"woops\" to throw a catched exception");

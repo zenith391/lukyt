@@ -69,7 +69,7 @@ public abstract class AbstractList<E> extends AbstractCollection<E> implements L
 		return new AbstractSubList<E>(this, fromIndex, toIndex);
 	}
 
-	public boolean add(Object obj) {
+	public boolean add(E obj) {
 		add(size(), obj);
 		return true;
 	}
@@ -92,11 +92,11 @@ public abstract class AbstractList<E> extends AbstractCollection<E> implements L
 		}
 	}
 
-	public E set(int index, Object obj) {
+	public E set(int index, E obj) {
 		throw new UnsupportedOperationException();
 	}
 
-	public void add(int index, Object obj) {
+	public void add(int index, E obj) {
 		throw new UnsupportedOperationException();
 	}
 

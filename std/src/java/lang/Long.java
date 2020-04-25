@@ -7,7 +7,31 @@ public final class Long extends Number {
 
 	private long value;
 
-	public static native Long parseLong(String s, int radix);
+	private static long toDigit(char ch, int radix) {
+		long l = ch;
+		l -= 0x30;
+		if (l < 0) {
+			l = -1;
+		} else if (l > 9) {
+			l = ch - 0x61;
+		}
+		return l;
+	}
+
+	public static Long parseLong(String s, int radix) {
+		int j = 0;
+		long l = 0;
+		for (int i = s.length(); i > 0; i--) {
+			char ch = s.charAt(i);
+			long digit = toDigit(ch, radix);
+			if (digit == -1) {
+				return null; // TODO: throw NumberFormatException
+			}
+			l += digit * (j+1);
+			j++;
+		}
+	}
+
 	public static native String toString(long i, int radix);
 
 	public static Long parseLong(String s) {

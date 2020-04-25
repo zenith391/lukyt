@@ -1,6 +1,6 @@
 package java.util;
 
-public class ArrayList extends AbstractList implements RandomAccess {
+public class ArrayList<E> extends AbstractList<E> implements RandomAccess {
 
 	private Object[] array;
 	private int size = 0;
@@ -10,7 +10,7 @@ public class ArrayList extends AbstractList implements RandomAccess {
 		array = new Object[initialCapacity];
 	}
 
-	public ArrayList(Collection c) {
+	public ArrayList(Collection<E> c) {
 		this(c.size());
 		addAll(c);
 	}
@@ -31,7 +31,7 @@ public class ArrayList extends AbstractList implements RandomAccess {
 		array = newArray;
 	}
 
-	public Object set(int index, Object obj) {
+	public E set(int index, E obj) {
 		if (index < 0 || index >= size) {
 			throw new IndexOutOfBoundsException(Integer.toString(index));
 		}
@@ -40,7 +40,7 @@ public class ArrayList extends AbstractList implements RandomAccess {
 		return obj;
 	}
 
-	public void add(int index, Object obj) {
+	public void add(int index, E obj) {
 		if (index < 0 || index >= size) {
 			throw new IndexOutOfBoundsException(Integer.toString(index));
 		}
@@ -52,7 +52,7 @@ public class ArrayList extends AbstractList implements RandomAccess {
 		size++;
 	}
 
-	public boolean add(Object obj) {
+	public boolean add(E obj) {
 		if (size + 1 > array.length)
 			increaseSize(1);
 		array[size] = obj;
@@ -60,7 +60,7 @@ public class ArrayList extends AbstractList implements RandomAccess {
 		return true;
 	}
 
-	public Object remove(int index) {
+	public E remove(int index) {
 		if (index < 0 || index > size) {
 			throw new IndexOutOfBoundsException(Integer.toString(index));
 		}
@@ -68,14 +68,14 @@ public class ArrayList extends AbstractList implements RandomAccess {
 		System.arraycopy(array, index, array, index-1, array.length-index-1);
 		modCount++;
 		size--;
-		return old;
+		return (E) old;
 	}
 
-	public Object get(int index) {
+	public E get(int index) {
 		if (index < 0 || index > size) {
 			throw new IndexOutOfBoundsException(Integer.toString(index));
 		}
-		return array[index];
+		return (E) array[index];
 	}
 
 	public int size() {

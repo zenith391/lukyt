@@ -21,6 +21,10 @@ public class FileDescriptor {
 		return true;
 	}
 
+	public void finalize() {
+		close();
+	}
+
 	native void open(String path, int mode);
 
 	public void sync() {}

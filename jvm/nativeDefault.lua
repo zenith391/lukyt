@@ -76,7 +76,7 @@ function java_lang_Runtime_load(class, method, thread, args)
 end
 
 function java_lang_Runtime_halt(class, method, thread, args)
-	os.exit()
+	os.exit(args[2][2])
 end
 
 function java_lang_Long_parseLong(class, method, thread, args)

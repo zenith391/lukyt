@@ -117,7 +117,7 @@ function lib:executeMethod(class, method, parameters)
 			inc = inc + 1
 			if ret == "throwable" then
 				if not throwable or throwable[2].type == "null" then
-					throwable = self:instantiateException("java/lang/NullPointerException", "attempted to throw a null value")
+					throwable = self:instantiateException("java/lang/NullPointerException")
 				end
 				local foundHandler = false
 				for _, handler in ipairs(method.code.exceptionHandlers) do
@@ -200,6 +200,13 @@ local function ldc(self, constant)
 		self:pushOperand(types.new(constant.type, constant.value))
 	elseif constant.type == "float" or constant.type == "double" then
 		self:pushOperand(types.new(constant.type, constant.value))
+	elseif constant.type == "class" then
+		local cl = classLoader.loadClass(constant.name.text, true)
+		if not cl then
+			-- TODO: throw exception
+			local ex = self:instantiateException("java/lang/NoClassDefException", constant.name.text)
+		end
+		self:pushOperand(classLoader.classObject(cl, self))
 	end
 end
 
@@ -893,7 +900,7 @@ end
 
 function lib.new()
 	return setmetatable({
-		name = "Thread",
+		name = "main",
 		pc = 1,
 		stack = {},
 		currentFrame = nil,
