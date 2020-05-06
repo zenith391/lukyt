@@ -1,9 +1,9 @@
 package java.lang;
 
 public final class Integer extends Number {
-	public static int MAX_VALUE = 0x7FFFFFFF;
-	public static int MIN_VALUE = 0;
-	public static int SIZE = 64; // depends on Lua 5.3
+	public static final int MAX_VALUE = 0x7FFFFFFF;
+	public static final int MIN_VALUE = MAX_VALUE + 1;
+	public static final int SIZE = 32; // depends on Lua 5.3
 
 	private int value;
 

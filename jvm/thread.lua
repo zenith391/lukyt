@@ -3,7 +3,6 @@ local types = require("type")
 local classLoader = require("classLoader")
 
 local INTERN_STRINGS = 1 -- can be disabled to gain a bit of performance in exchange of less standard compatiblity
-
 function lib:createFrame()
 	local frame = {}
 	frame.localVariables = {}
@@ -292,7 +291,21 @@ function lib:execute(class, code)
 		elseif op == 0x21 then -- lload_3
 			idx = 3
 		end
-		-- iload_0 doesn't have an if here as "idx" is by default set to 0
+		-- lload_0 doesn't have an if here as "idx" is by default set to 0
+		self:pushOperand(self.currentFrame.localVariables[idx+1])
+	elseif op == 0x18 or op == 0x26 or op == 0x27 or op == 0x28 or op == 0x29 then -- dload and dload_<n>
+		local idx = 0
+		if op == 0x18 then
+			self.pc = self.pc + 1
+			idx = code[self.pc]
+		elseif op == 0x27 then -- dload_1
+			idx = 1
+		elseif op == 0x28 then -- dload_2
+			idx = 2
+		elseif op == 0x29 then -- dload_3
+			idx = 3
+		end
+		-- dload_0 doesn't have an if here as "idx" is by default set to 0
 		self:pushOperand(self.currentFrame.localVariables[idx+1])
 	elseif op == 0x19 or op == 0x2a or op == 0x2b or op == 0x2c or op == 0x2d then -- aload and aload_<n>
 		local idx = 0
@@ -308,14 +321,7 @@ function lib:execute(class, code)
 		end
 		-- aload_0 doesn't have an if here as "idx" is by default set to 0
 		self:pushOperand(self.currentFrame.localVariables[idx+1])
-	elseif op == 0x32 then -- aaload
-		local idx = self:popOperand()[2]
-		local array = self:popOperand()
-		if idx < 0 then
-			error("negativearrayindex: trying to set array with index " .. idx)
-		end
-		self:pushOperand(array[2].array[idx+1])
-	elseif op == 0x34 then -- caload
+	elseif op == 0x2f or op == 0x32 or op == 0x33 or op == 0x34 then -- laload, aaload, baload and caload
 		local idx = self:popOperand()[2]
 		local array = self:popOperand()
 		if idx < 0 then
@@ -364,12 +370,7 @@ function lib:execute(class, code)
 		end
 		-- astore_0 doesn't have an if here as "idx" is by default set to 0
 		self.currentFrame.localVariables[idx+1] = self:popOperand()
-	elseif op == 0x53 then -- aastore
-		local val = self:popOperand()
-		local idx = self:popOperand()[2]
-		local array = self:popOperand()
-		array[2].array[idx+1] = val
-	elseif op == 0x55 then -- castore
+	elseif op == 0x50 or  op == 0x53 or op == 0x54 or op == 0x55 then -- lastore, aastore, bastore and castore
 		local val = self:popOperand()
 		local idx = self:popOperand()[2]
 		local array = self:popOperand()
@@ -394,6 +395,10 @@ function lib:execute(class, code)
 		local second = self:popOperand()[2]
 		local first = self:popOperand()[2]
 		self:pushOperand(types.new("long", first + second))
+	elseif op == 0x63 then -- dadd
+		local second = self:popOperand()[2]
+		local first = self:popOperand()[2]
+		self:pushOperand(types.new("double", first + second))
 	elseif op == 0x64 then -- isub
 		local second = self:popOperand()[2]
 		local first = self:popOperand()[2]
@@ -413,18 +418,44 @@ function lib:execute(class, code)
 	elseif op == 0x6c then -- idiv
 		local second = self:popOperand()[2]
 		local first = self:popOperand()[2]
+		if second == 0 then
+			return "throwable", self:instantiateException("java/lang/ArithmeticError", "division by 0")
+		end
 		self:pushOperand(types.new("int", math.floor(first / second)))
 	elseif op == 0x6d then -- ldiv
 		local second = self:popOperand()[2]
 		local first = self:popOperand()[2]
+		if second == 0 then
+			return "throwable", self:instantiateException("java/lang/ArithmeticError", "division by 0")
+		end
 		self:pushOperand(types.new("long", math.floor(first / second)))
+	elseif op == 0x6f then -- ddiv
+		local second = self:popOperand()[2]
+		local first = self:popOperand()[2]
+		if second == 0 then
+			return "throwable", self:instantiateException("java/lang/ArithmeticError", "division by 0")
+		end
+		self:pushOperand(types.new("double", first / second))
 	elseif op == 0x70 then -- irem
 		local second = self:popOperand()[2]
 		local first = self:popOperand()[2]
+		if second == 0 then
+			return "throwable", self:instantiateException("java/lang/ArithmeticError", "division by 0")
+		end
 		self:pushOperand(types.new("int", first - math.floor(first/second) * second))
+	elseif op == 0x71 then -- lrem
+		local second = self:popOperand()[2]
+		local first = self:popOperand()[2]
+		if second == 0 then
+			return "throwable", self:instantiateException("java/lang/ArithmeticError", "division by 0")
+		end
+		self:pushOperand(types.new("long", first - math.floor(first/second) * second))
 	elseif op == 0x74 then -- ineg
 		local value = self:popOperand()[2]
 		self:pushOperand(types.new("int", value * -1))
+	else if op == 0x75 then -- lneg
+		local value = self:popOperand()[2]
+		self:pushOperand(types.new("long", value * -1))
 	elseif op == 0x75 then -- ishl
 		local second = self:popOperand()[2]
 		local first = self:popOperand()[2]
@@ -437,10 +468,18 @@ function lib:execute(class, code)
 		local second = self:popOperand()[2]
 		local first = self:popOperand()[2]
 		self:pushOperand(types.new("int", first & second))
+	elseif op == 0x7f then -- land
+		local second = self:popOperand()[2]
+		local first = self:popOperand()[2]
+		self:pushOperand(types.new("long", first & second))
 	elseif op == 0x80 then -- ior
 		local second = self:popOperand()[2]
 		local first = self:popOperand()[2]
 		self:pushOperand(types.new("int", first | second))
+	elseif op == 0x81 then -- lor
+		local second = self:popOperand()[2]
+		local first = self:popOperand()[2]
+		self:pushOperand(types.new("long", first | second))
 	elseif op == 0x84 then -- iinc
 		local index = code[self.pc+1]
 		local const = string.unpack("b", string.char(code[self.pc+2]))
@@ -570,7 +609,7 @@ function lib:execute(class, code)
 	elseif op == 0xa7 then -- goto
 		local branch = string.unpack(">i2", string.char(code[self.pc+1]) .. string.char(code[self.pc+2]))
 		self.pc = self.pc + branch - 1
-	elseif op == 0xac or op == 0xad or op == 0xb0 then -- ireturn and lreturn and areturn
+	elseif op == 0xac or op == 0xad or op == 0xb0 then -- ireturn, lreturn and areturn
 		local ref = self:popOperand()
 		return ref
 	elseif op == 0xb1 then -- return
@@ -824,6 +863,36 @@ function lib:execute(class, code)
 		if doThrow then
 			error("checkcast failed: todo throw exception")
 		end
+	elseif op == 0xc2 then -- monitorenter
+		local ref = self:popOperand()[2]
+		if ref.type == "null" then
+			return "throwable", self:instantiateException("java/lang/NullPointerException")
+		end
+		if ref.monitor == 0 then
+			ref.monitor = ref.monitor + 1
+			ref.monitorOwner = self
+		elseif ref.monitorOwner == self then
+			ref.monitor = ref.monitor + 1
+		else
+			while ref.monitor ~= 0 do
+				coroutine.yield()
+			end
+			ref.monitor = ref.monitor + 1
+			ref.monitorOwner = self
+		end
+	elseif op == 0xc3 then -- monitorexit
+		local ref = self:popOperand()[2]
+		if ref.type == "null" then
+			return "throwable", self:instantiateException("java/lang/NullPointerException")
+		end
+		if ref.monitorOwner == self then
+			ref.monitor = ref.monitor - 1
+			if ref.monitor == 0 then
+				ref.monitorOwner = nil
+			end
+		else
+			return "throwable", self:instantiateException("java/lang/IllegalMonitorStateException")
+		end
 	elseif op == 0xc6 then -- ifnull
 		local branch = string.unpack(">i2", string.char(code[self.pc+1]) .. string.char(code[self.pc+2]))
 		local val = self:popOperand()
@@ -866,7 +935,9 @@ function lib:instantiateClass(class, parameters, doInit, initDescriptor)
 		type = "object",
 		object = {},
 		class = classReference,
-		hashCode = math.floor(math.random() * 0x7FFFFFFF)
+		hashCode = math.floor(math.random() * 0x7FFFFFFF),
+		monitor = 0,
+		monitorOwner = nil
 	})
 	defaultFields(object, class)
 	local init = nil

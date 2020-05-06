@@ -1,5 +1,5 @@
 # Lukyt
-Lukyt is a small JVM made in Lua supporting Java 5 (except annotations).
+Lukyt is a toy project, a small JVM made in Lua supporting Java 5 (except annotations).
 It's main advantage is to currently have a very small startup time and use way much less memory.
 
 [Roadmap](https://github.com/zenith391/lukyt/projects/1)
