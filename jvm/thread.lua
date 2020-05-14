@@ -137,6 +137,8 @@ function lib:executeMethod(class, method, parameters)
 				end
 				if not foundHandler then
 					table.remove(self.stackTrace)
+					self.pc = self:popOperand()[2]
+					self:popFrame()
 					return throwable
 				end
 			end
@@ -419,35 +421,35 @@ function lib:execute(class, code)
 		local second = self:popOperand()[2]
 		local first = self:popOperand()[2]
 		if second == 0 then
-			return "throwable", self:instantiateException("java/lang/ArithmeticError", "division by 0")
+			return "throwable", self:instantiateException("java/lang/ArithmeticException", "divide by zero")
 		end
 		self:pushOperand(types.new("int", math.floor(first / second)))
 	elseif op == 0x6d then -- ldiv
 		local second = self:popOperand()[2]
 		local first = self:popOperand()[2]
 		if second == 0 then
-			return "throwable", self:instantiateException("java/lang/ArithmeticError", "division by 0")
+			return "throwable", self:instantiateException("java/lang/ArithmeticException", "divide by zero")
 		end
 		self:pushOperand(types.new("long", math.floor(first / second)))
 	elseif op == 0x6f then -- ddiv
 		local second = self:popOperand()[2]
 		local first = self:popOperand()[2]
 		if second == 0 then
-			return "throwable", self:instantiateException("java/lang/ArithmeticError", "division by 0")
+			return "throwable", self:instantiateException("java/lang/ArithmeticException", "divide by zero")
 		end
 		self:pushOperand(types.new("double", first / second))
 	elseif op == 0x70 then -- irem
 		local second = self:popOperand()[2]
 		local first = self:popOperand()[2]
 		if second == 0 then
-			return "throwable", self:instantiateException("java/lang/ArithmeticError", "division by 0")
+			return "throwable", self:instantiateException("java/lang/ArithmeticException", "divide by zero")
 		end
 		self:pushOperand(types.new("int", first - math.floor(first/second) * second))
 	elseif op == 0x71 then -- lrem
 		local second = self:popOperand()[2]
 		local first = self:popOperand()[2]
 		if second == 0 then
-			return "throwable", self:instantiateException("java/lang/ArithmeticError", "division by 0")
+			return "throwable", self:instantiateException("java/lang/ArithmeticException", "divide by zero")
 		end
 		self:pushOperand(types.new("long", first - math.floor(first/second) * second))
 	elseif op == 0x74 then -- ineg
@@ -504,6 +506,16 @@ function lib:execute(class, code)
 		self:pushOperand(types.new("long", long))
 	elseif op == 0x92 then -- i2c
 		self:pushOperand(types.new("char", self:popOperand()[2]))
+	elseif op == 0x94 then -- lcmp
+		local second = self:popOperand()[2]
+		local first = self:popOperand()[2]
+		if first > second then
+			self:pushOperand(types.new("int", 1))
+		elseif first < second then
+			self:pushOperand(types.new("int", -1))
+		else
+			self:pushOperand(types.new("int", 0))
+		end
 	elseif op == 0x99 then -- ifeq
 		local branch = string.unpack(">i2", string.char(code[self.pc+1]) .. string.char(code[self.pc+2]))
 		local val1 = self:popOperand()[2]
@@ -609,7 +621,7 @@ function lib:execute(class, code)
 	elseif op == 0xa7 then -- goto
 		local branch = string.unpack(">i2", string.char(code[self.pc+1]) .. string.char(code[self.pc+2]))
 		self.pc = self.pc + branch - 1
-	elseif op == 0xac or op == 0xad or op == 0xb0 then -- ireturn, lreturn and areturn
+	elseif op == 0xac or op == 0xad or op == 0xaf or op == 0xb0 then -- ireturn, lreturn, dreturn and areturn
 		local ref = self:popOperand()
 		return ref
 	elseif op == 0xb1 then -- return
@@ -912,6 +924,7 @@ function lib:execute(class, code)
 	else
 		error("unknown opcode: 0x" .. string.format("%x", op))
 	end
+	end
 	return true
 end
 
@@ -943,7 +956,7 @@ function lib:instantiateClass(class, parameters, doInit, initDescriptor)
 	local init = nil
 	for _,v in pairs(class.methods) do
 		if doInit and not initDescriptor then
-			error()
+			error("doInit is set to true but initDescriptor is missing")
 		end
 		if v.name == "<init>" and v.descriptor == initDescriptor then
 			init = v

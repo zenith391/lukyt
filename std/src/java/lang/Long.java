@@ -7,6 +7,10 @@ public final class Long extends Number {
 
 	private long value;
 
+	public Long(long l) {
+		this.value = l;
+	}
+
 	private static long toDigit(char ch, int radix) {
 		long l = ch;
 		l -= 0x30;
@@ -25,11 +29,12 @@ public final class Long extends Number {
 			char ch = s.charAt(i);
 			long digit = toDigit(ch, radix);
 			if (digit == -1) {
-				return null; // TODO: throw NumberFormatException
+				throw new NumberFormatException(s);
 			}
 			l += digit * (j+1);
 			j++;
 		}
+		return new Long(l);
 	}
 
 	public static native String toString(long i, int radix);

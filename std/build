@@ -1,5 +1,5 @@
 #!/bin/sh
 cd src
-export JAVA_COMPILE="/usr/lib/jvm/java-8-openjdk-amd64/bin/javac -Xlint:-options -d ../bin -source 5 -target 5"
+export JAVA_COMPILE="/usr/lib/jvm/java-8-openjdk-amd64/bin/javac -Xlint:-options -d ../bin -source 6 -target 6"
 $JAVA_COMPILE java/lang/*.java java/io/*.java java/util/*.java lukyt/*.java
 cd ..

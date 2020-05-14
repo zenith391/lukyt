@@ -1,4 +1,4 @@
-package java.lang;
+package lukyt;
 
 public class ChildNotFoundException extends RuntimeException {
 

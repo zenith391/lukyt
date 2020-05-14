@@ -40,14 +40,6 @@ function java_lang_System_arraycopy(class, method, thread, args)
 	end
 end
 
-function lukyt_OS_time()
-	return types.new("double", os.time())
-end
-
-function lukyt_OS_clock()
-	return types.new("double", os.clock())
-end
-
 function java_lang_Object_hashCode(class, method, thread, args)
 	local this = args[1]
 	return types.new("int", this.hashCode)
@@ -144,4 +136,68 @@ end
 function java_lang_Class_getClassName(class, method, thread, args)
 	local ref = args[1][2]
 	return native.luaToString(classLoader.getReferencedClass(ref).name, thread)
+end
+
+-- Lua Object native
+function lukyt_LuaObject_envHandle(class, method, thread, args)
+	local t = types.new("long", 1)
+	t._lua = _ENV
+	return t
+end
+
+function lukyt_LuaObject_get0(class, method, thread, args)
+	local handle = args[1][2].object.handle
+	local key = native.stringToLua(args[2])
+	if handle._lua[key] then
+		local t = types.new("long", 1)
+		t._lua = handle._lua[key]
+		return t
+	end
+	return types.new("long", 0)
+end
+
+function lukyt_LuaObject_set0(class, method, thread, args)
+	local handle = args[1][2].object.handle
+	local key = native.stringToLua(args[2])
+	local handle2 = args[3][2].object.handle
+	handle._lua[key] = handle2._lua
+end
+
+function lukyt_LuaObject_executeAll(class, method, thread, args)
+	local object = args[1][2].object
+	local handle = object.handle
+	local cl, err = classLoader.loadClass("lukyt/LuaObject", true)
+	if not cl then
+		error("could not import lukyt/LuaObject: " .. err)
+	end
+
+	local fArgs = {}
+	for _, obj in pairs(args[2][2].array) do
+		table.insert(fArgs, obj[2].object.handle._lua)
+	end
+	local results = table.pack(handle._lua(table.unpack(fArgs)))
+	local resultsArray = {}
+	for _, res in ipairs(results) do
+		local t = types.new("long", 1)
+		t._lua = res
+		local object = thread:instantiateClass(cl, {t}, true, "(J)V")
+		table.insert(resultsArray, object)
+	end
+	return types.referenceForArray(resultsArray)
+end
+
+function lukyt_LuaObject_asDouble(class, method, thread, args)
+	return types.new("double", args[1][2].object.handle._lua)
+end
+
+function lukyt_LuaObject_asLong(class, method, thread, args)
+	return types.new("long", args[1][2].object.handle._lua)
+end
+
+function lukyt_LuaObject_asString(class, method, thread, args)
+	return native.luaToString(args[1][2].object.handle._lua)
+end
+
+function lukyt_LuaObject_getType(class, method, thread, args)
+	return native.luaToString(type(args[1][2].object.handle._lua))
 end

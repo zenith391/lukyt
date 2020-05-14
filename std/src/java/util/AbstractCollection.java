@@ -46,7 +46,7 @@ public abstract class AbstractCollection<E> implements Collection<E> {
 		throw new UnsupportedOperationException();
 	}
 
-	public boolean remove(E obj) {
+	public boolean remove(Object obj) {
 		Iterator<E> iterator = iterator();
 		while (iterator.hasNext()) {
 			if (obj == null) {
