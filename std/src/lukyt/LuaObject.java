@@ -3,10 +3,7 @@ package lukyt;
 import java.util.*;
 
 public class LuaObject {
-	private long handle; /* unsafe value:
-		to save memory and for sake of simplicity the value isn't actually a long
-		and the JVM will crash when attempting to do math operations on it
-	*/
+	private long handle;
 
 	/**
 		The {@link lukyt.LuaObject} corresponding to the Lua variable <code>_ENV</code>
@@ -18,22 +15,43 @@ public class LuaObject {
 	**/
 	public static final LuaObject _G   = _ENV.get("_G");
 
-	private static native long handleFrom(String str);
-	private static native long handleFrom(long l);
-	private static native long handleFrom(double d);
+	/**
+		The {@link lukyt.LuaObject} corresponding to Lua <code>nil</code>
+	**/
+	public static final LuaObject NIL  = new LuaObject();
+
+	private static native long handleFromS(String str);
+	private static native long handleFromL(long l);
+	private static native long handleFromD(double d);
 	private static native long nilHandle();
 	private static native long envHandle();
 
 	public static LuaObject fromString(String str) {
-		return new LuaObject(handleFrom(str));
+		return new LuaObject(handleFromS(str));
 	}
 
 	public static LuaObject fromLong(long l) {
-		return new LuaObject(handleFrom(l));
+		return new LuaObject(handleFromL(l));
 	}
 
 	public static LuaObject fromDouble(double d) {
-		return new LuaObject(handleFrom(d));
+		return new LuaObject(handleFromD(d));
+	}
+
+	public static LuaObject from(Object o) {
+		if (o == null) {
+			return LuaObject.NIL;
+		} else if (o instanceof Double) {
+			return LuaObject.fromDouble(((Double) o).doubleValue());
+		} else if (o instanceof Long) {
+			return LuaObject.fromLong(((Long) o).longValue());
+		} else if (o instanceof Integer) {
+			return LuaObject.fromLong(((Integer) o).longValue());
+		} else if (o instanceof String) {
+			return LuaObject.fromString((String) o);
+		} else {
+			throw new RuntimeException("Could not cast \"" + o.getClass().getName() + "\" to a Lua object.");
+		}
 	}
 
 	private LuaObject(long handle) {
@@ -55,13 +73,31 @@ public class LuaObject {
 	public native String asString();
 	private native long get0(String key);
 
+	public Object asObject() {
+		String type = getType();
+		if (type.equals("number")) {
+			return new Double(asDouble());
+		} else if (type.equals("string")) {
+			return asString();
+		} else if (type.equals("nil")) {
+			return null;
+		} else if (type.equals("boolean")) {
+			return new Boolean(asString());
+		} else {
+			throw new RuntimeException("Could not cast \"" + type + "\" to a Java object.");
+		}
+	}
+
 	/**
 		Set the child with this key to the lua variable corresponding to the given {@link lukyt.LuaObject}.
 		@param key the key of the LuaObject to set
 	**/
 	public void set(String key, LuaObject lua) {
+		if (key == null) {
+			throw new IllegalArgumentException("key is null");
+		}
 		if (lua == null) {
-			lua = new LuaObject();
+			lua = LuaObject.NIL;
 		}
 		set0(key, lua);
 	}
@@ -75,6 +111,9 @@ public class LuaObject {
 		@return the result
 	**/
 	public LuaObject get(String key) {
+		if (!getType().equals("table")) {
+			throw new TypeNotPresentException(getType() + " != table", null);
+		}
 		long handle = get0(key);
 		if (handle == 0)
 			throw new ChildNotFoundException(key);
@@ -106,14 +145,14 @@ public class LuaObject {
 		@return the first result of the function, or null if there isn't any
 	**/
 	public LuaObject executeChild(String key) {
-		executeChild(key, new LuaObject[0])
+		return executeChild(key, new LuaObject[0]);
 	}
 
-	private static native String[] keys0();
+	private native String[] keys0();
 
 	public List<String> keys() {
-		if (!getType().equals("object")) {
-			throw new TypeNotPresentException(getType() + " != object", null);
+		if (!getType().equals("table")) {
+			throw new TypeNotPresentException(getType() + " != table", null);
 		}
 		String[] keys = keys0();
 		ArrayList<String> list = new ArrayList<String>(keys.length);
@@ -134,7 +173,7 @@ public class LuaObject {
 
 	/**
 		Returns <code>true</code> if this <b>object</b> only contains numerical keys.
-		The keys do not have to be in consequent order.<br/>
+		The keys do not have to be in sequencial.<br/>
 		Example: {1, 2, 3, 4} -> luaObject.isArray() -> <code>true</code><br/>
 	**/
 	public boolean isArray() {
@@ -149,14 +188,25 @@ public class LuaObject {
 	}
 
 	/**
-		Returns <code>true/<code> if {@link lukyt.LuaObject.getType()} returns <code>"object"</code>.
+		Returns <code>true/<code> if {@link lukyt.LuaObject.getType()} returns <code>"nil"</code>.
 	**/
-	public boolean isObject() {
-		return getType().equals("object");
+	public boolean isNil() {
+		return getType().equals("nil");
+	}
+
+	/**
+		Returns <code>true/<code> if {@link lukyt.LuaObject.getType()} returns <code>"table"</code>.
+	**/
+	public boolean isTable() {
+		return getType().equals("table");
 	}
 
 	public LuaObject execute() {
 		return execute(new LuaObject[0]);
+	}
+
+	public LuaObject execute(LuaObject arg) {
+		return executeAll(new LuaObject[] {arg})[0];
 	}
 
 	public LuaObject execute(LuaObject[] args) {

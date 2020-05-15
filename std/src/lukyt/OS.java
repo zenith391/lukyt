@@ -1,7 +1,7 @@
 package lukyt;
 
 /**
-	This is used internally, do not use!
+	This package is a binding around Lua <code>os</code> API
 **/
 public class OS {
 	

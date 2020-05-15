@@ -145,6 +145,12 @@ function lukyt_LuaObject_envHandle(class, method, thread, args)
 	return t
 end
 
+function lukyt_LuaObject_nilHandle(class, method, thread, args)
+	local t = types.new("long", 1)
+	t._lua = nil
+	return t
+end
+
 function lukyt_LuaObject_get0(class, method, thread, args)
 	local handle = args[1][2].object.handle
 	local key = native.stringToLua(args[2])
@@ -195,9 +201,27 @@ function lukyt_LuaObject_asLong(class, method, thread, args)
 end
 
 function lukyt_LuaObject_asString(class, method, thread, args)
-	return native.luaToString(args[1][2].object.handle._lua)
+	return native.luaToString(tostring(args[1][2].object.handle._lua), thread)
+end
+
+function lukyt_LuaObject_handleFromL(class, method, thread, args)
+	local t = types.new("long", 1)
+	t._lua = args[1][2]
+	return t
+end
+
+function lukyt_LuaObject_handleFromD(class, method, thread, args)
+	local t = types.new("long", 1)
+	t._lua = args[1][2]
+	return t
+end
+
+function lukyt_LuaObject_handleFromS(class, method, thread, args)
+	local t = types.new("long", 1)
+	t._lua = native.stringToLua(args[1])
+	return t
 end
 
 function lukyt_LuaObject_getType(class, method, thread, args)
-	return native.luaToString(type(args[1][2].object.handle._lua))
+	return native.luaToString(type(args[1][2].object.handle._lua), thread)
 end

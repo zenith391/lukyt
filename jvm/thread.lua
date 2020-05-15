@@ -87,7 +87,9 @@ function lib:executeMethod(class, method, parameters)
 	})
 	if method.code.nativeName then -- native method
 		if not _ENV[method.code.nativeName] then
-			error("Unbound native method: " .. method.class.name .. "." .. method.name)
+			--error("Unbound native method: " .. method.class.name .. "." .. method.name)
+			table.remove(self.stackTrace)
+			return self:instantiateException("java/lang/UnsatisfiedLinkError", method.class.name .. "." .. method.name)
 		end
 		local ret = _ENV[method.code.nativeName](class, method, self, parameters)
 		if self.currentFrame and ret then
@@ -618,6 +620,24 @@ function lib:execute(class, code)
 		else
 			self.pc = self.pc + 2
 		end
+	elseif op == 0xa5 then -- if_acmpeq
+		local branch = string.unpack(">i2", string.char(code[self.pc+1]) .. string.char(code[self.pc+2]))
+		local val2 = self:popOperand()[2]
+		local val1 = self:popOperand()[2]
+		if val1 == val2 then
+			self.pc = self.pc + branch - 1
+		else
+			self.pc = self.pc + 2
+		end
+	elseif op == 0xa6 then -- if_acmpne
+		local branch = string.unpack(">i2", string.char(code[self.pc+1]) .. string.char(code[self.pc+2]))
+		local val2 = self:popOperand()[2]
+		local val1 = self:popOperand()[2]
+		if val1 ~= val2 then
+			self.pc = self.pc + branch - 1
+		else
+			self.pc = self.pc + 2
+		end
 	elseif op == 0xa7 then -- goto
 		local branch = string.unpack(">i2", string.char(code[self.pc+1]) .. string.char(code[self.pc+2]))
 		self.pc = self.pc + branch - 1
@@ -875,6 +895,35 @@ function lib:execute(class, code)
 		if doThrow then
 			error("checkcast failed: todo throw exception")
 		end
+	elseif op == 0xc1 then -- instanceof
+		local index = (code[self.pc+1] << 8) | code[self.pc+2]
+		local ref = self:popOperand()
+		local className = class.constantPool[index].name.text
+		local cl = classLoader.loadClass(className, true)
+		if not cl then
+			-- TOOD: throw NoClassDefException
+		end
+		if ref[2].type == "null" then
+			self:pushOperand(types.new("int", 0))
+		else
+			local refClass = ref[2].class[2].class
+			local implements = false
+			for k, v in pairs(refClass.interfaces) do
+				if v.name == className then
+					implements = false
+					break
+				end
+			end
+			if lib.isSubclassOf(refClass, cl) then
+				implements = true
+			end
+			if implements then
+				self:pushOperand(types.new("int", 1))
+			else
+				self:pushOperand(types.new("int", 0))
+			end
+		end
+		self.pc = self.pc + 2
 	elseif op == 0xc2 then -- monitorenter
 		local ref = self:popOperand()[2]
 		if ref.type == "null" then

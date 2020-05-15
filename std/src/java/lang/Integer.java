@@ -15,6 +15,10 @@ public final class Integer extends Number {
 		this.value = value;
 	}
 
+	public static Integer valueOf(int i) {
+		return new Integer(i);
+	}
+
 	public static Integer parseInteger(String s, int radix) {
 		return new Integer(Long.parseLong(s, radix).intValue());
 	}

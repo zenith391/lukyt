@@ -3,6 +3,8 @@ package java.lang;
 public class String {
 
 	private char[] chars; // not Unicode-proof
+	private boolean hashCodeDefined;
+	private int hashCode;
 
 	public String(char[] chars) {
 		this.chars = chars;
@@ -82,19 +84,26 @@ public class String {
 		if (length() != other.length()) {
 			return false;
 		}
+		/*
 		for (int i = 0; i < chars.length; i++) {
 			if (chars[i] != other.chars[i]) {
 				return false;
 			}
 		}
 		return true;
+		*/
+		// FAST METHOD: (low) risk of collision!
+		return hashCode() == other.hashCode();
 	}
 
 	public int hashCode() {
-		int hashCode = 0;
-		for (int i = 0; i < chars.length; i++) {
-			hashCode += chars[i];
-			hashCode *= 145;
+		if (!hashCodeDefined) {
+			hashCode = 0;
+			for (int i = 0; i < chars.length; i++) {
+				hashCode += chars[i];
+				hashCode *= 31;
+			}
+			hashCodeDefined = true;
 		}
 		return hashCode;
 	}
