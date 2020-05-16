@@ -7,7 +7,7 @@ local class = require("class")
 local types = require("type")
 
 function classLoader.getReferencedClass(ref)
-	return classLoader.classReferences[ref];
+	return classLoader.classReferences[ref]
 end
 
 function classLoader.classObject(class, thread)

@@ -4,13 +4,15 @@ package lukyt;
 	This package is a binding around Lua <code>os</code> API
 **/
 public class OS {
+
+	private static final LuaObject os = LuaObject._ENV.get("os");
 	
 	public static double time() {
-		return LuaObject._ENV.get("os").get("time").execute().asDouble();
+		return os.executeChild("time").asDouble();
 	}
 
 	public static double clock() {
-		return LuaObject._ENV.get("os").get("clock").execute().asDouble();
+		return os.executeChild("clock").asDouble();
 	}
 
 }

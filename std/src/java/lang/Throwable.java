@@ -46,7 +46,7 @@ public class Throwable {
 	private native StackTraceElement[] currentStackTrace();
 
 	public void printStackTrace() {
-		printStackTrace(System.out); // TODO: use System.err
+		printStackTrace(System.err);
 	}
 
 	public StackTraceElement[] getStackTrace() {

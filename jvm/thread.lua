@@ -42,6 +42,36 @@ function lib:popOperand()
 	return operand
 end
 
+function lib:getLocalVariable(idx)
+	local realIdx = idx
+	--[[local i = 1
+	while i < realIdx-1 do
+		if self.currentFrame.localVariables[i] then
+			local t = types.type(self.currentFrame.localVariables[i])
+			if t == "double" or t == "long" then
+				realIdx = realIdx - 1
+			end
+		end
+		i = i + 1
+	end
+	realIdx = idx -- temp fix]]
+	return self.currentFrame.localVariables[math.max(realIdx, 1)]
+end
+
+function lib:setLocalVariable(idx, val)
+	local realIdx = idx
+	--[[for i=1, idx do
+		if self.currentFrame.localVariables[i] then
+			local t = types.type(self.currentFrame.localVariables[i])
+			if t == "double" or t == "long" then
+				realIdx = realIdx - 1
+			end
+		end
+	end
+	realIdx = idx -- temp fix]]
+	self.currentFrame.localVariables[math.max(realIdx, 1)] = val
+end
+
 function lib:pushNewFrame()
 	local frame = self:createFrame()
 	table.insert(self.stack, frame)
@@ -76,6 +106,8 @@ function lib.isSubclassOf(class, ofClass)
 		return true
 	elseif class.superClass then
 		return lib.isSubclassOf(class.superClass, ofClass)
+	else
+		return false
 	end
 end
 
@@ -102,9 +134,16 @@ function lib:executeMethod(class, method, parameters)
 		self:pushOperand(types.new("returnAddress", self.pc))
 		self.pc = 1
 		local code = method.code.code
+		local id = 1
 		for k, v in ipairs(parameters) do
-			frame.localVariables[k] = v
+			self:setLocalVariable(id, v)
+			if v[1] == "J" or v[1] == "D" then
+				id = id + 2
+			else
+				id = id + 1
+			end
 		end
+		local ok = false
 		local ret = true
 		local throwable = nil
 		while ret == true do
@@ -114,7 +153,20 @@ function lib:executeMethod(class, method, parameters)
 				end
 				inc = 0
 			end
-			ret, throwable = self:execute(class, code)
+			ok, ret, throwable = xpcall(self.execute, function (err)
+				print("lua error: " .. err)
+				print(debug.traceback("lua stack traceback:", 2))
+				print("reduced java stack traceback:")
+				for i=#self.stackTrace, 1, -1 do
+					local trace = self.stackTrace[i]
+					io.write("\t" .. trace.method.class.name .. "." .. trace.method.name)
+					if i == #self.stackTrace then
+						io.write(":" .. self.pc)
+					end
+					io.write("\n")
+				end
+				os.exit(1)
+			end, self, class, code)
 			inc = inc + 1
 			if ret == "throwable" then
 				if not throwable or throwable[2].type == "null" then
@@ -128,6 +180,10 @@ function lib:executeMethod(class, method, parameters)
 					else
 						subclass = lib.isSubclassOf(throwable[2].class[2].class, classLoader.loadClass(handler.catchClass, true))
 					end
+					print("pc : " .. tostring(self.pc))
+					print("start : " .. handler.startPc)
+					print("end : " .. handler.endPc)
+					print("is subclass : " .. tostring(subclass))
 					if self.pc >= handler.startPc and self.pc < handler.endPc and subclass then
 						foundHandler = true
 						self.pc = handler.handlerPc - 1
@@ -282,7 +338,7 @@ function lib:execute(class, code)
 			idx = 3
 		end
 		-- iload_0 doesn't have an if here as "idx" is by default set to 0
-		self:pushOperand(self.currentFrame.localVariables[idx+1])
+		self:pushOperand(self:getLocalVariable(idx+1))
 	elseif op == 0x16 or op == 0x1e or op == 0x1f or op == 0x20 or op == 0x21 then -- lload and lload_<n>
 		local idx = 0
 		if op == 0x16 then
@@ -296,7 +352,7 @@ function lib:execute(class, code)
 			idx = 3
 		end
 		-- lload_0 doesn't have an if here as "idx" is by default set to 0
-		self:pushOperand(self.currentFrame.localVariables[idx+1])
+		self:pushOperand(self:getLocalVariable(idx+1))
 	elseif op == 0x18 or op == 0x26 or op == 0x27 or op == 0x28 or op == 0x29 then -- dload and dload_<n>
 		local idx = 0
 		if op == 0x18 then
@@ -310,7 +366,7 @@ function lib:execute(class, code)
 			idx = 3
 		end
 		-- dload_0 doesn't have an if here as "idx" is by default set to 0
-		self:pushOperand(self.currentFrame.localVariables[idx+1])
+		self:pushOperand(self:getLocalVariable(idx+1))
 	elseif op == 0x19 or op == 0x2a or op == 0x2b or op == 0x2c or op == 0x2d then -- aload and aload_<n>
 		local idx = 0
 		if op == 0x19 then
@@ -324,7 +380,7 @@ function lib:execute(class, code)
 			idx = 3
 		end
 		-- aload_0 doesn't have an if here as "idx" is by default set to 0
-		self:pushOperand(self.currentFrame.localVariables[idx+1])
+		self:pushOperand(self:getLocalVariable(idx+1))
 	elseif op == 0x2f or op == 0x32 or op == 0x33 or op == 0x34 then -- laload, aaload, baload and caload
 		local idx = self:popOperand()[2]
 		local array = self:popOperand()
@@ -345,7 +401,7 @@ function lib:execute(class, code)
 			idx = 3
 		end
 		-- istore_0 doesn't have an if here as "idx" is by default set to 0
-		self.currentFrame.localVariables[idx+1] = self:popOperand()
+		self:setLocalVariable(idx+1, self:popOperand())
 	elseif op == 0x37 or op == 0x3f or op == 0x40 or op == 0x41 or op == 0x42 then -- lstore and lstore_<n>
 		local idx = 0
 		if op == 0x37 then
@@ -359,7 +415,7 @@ function lib:execute(class, code)
 			idx = 3
 		end
 		-- lstore_0 doesn't have an if here as "idx" is by default set to 0
-		self.currentFrame.localVariables[idx+1] = self:popOperand()
+		self:setLocalVariable(idx+1, self:popOperand())
 	elseif op == 0x3a or op == 0x4b or op == 0x4c or op == 0x4d or op == 0x4e then -- astore and astore_<n>
 		local idx = 0
 		if op == 0x3a then
@@ -373,7 +429,7 @@ function lib:execute(class, code)
 			idx = 3
 		end
 		-- astore_0 doesn't have an if here as "idx" is by default set to 0
-		self.currentFrame.localVariables[idx+1] = self:popOperand()
+		self:setLocalVariable(idx+1, self:popOperand())
 	elseif op == 0x50 or  op == 0x53 or op == 0x54 or op == 0x55 then -- lastore, aastore, bastore and castore
 		local val = self:popOperand()
 		local idx = self:popOperand()[2]
@@ -487,11 +543,13 @@ function lib:execute(class, code)
 	elseif op == 0x84 then -- iinc
 		local index = code[self.pc+1]
 		local const = string.unpack("b", string.char(code[self.pc+2]))
-		local var = self.currentFrame.localVariables[index+1]
+		local var = self:getLocalVariable(index+1)
 		var[2] = var[2] + const
 		self.pc = self.pc + 2
 	elseif op == 0x85 then -- i2l
 		self:pushOperand(types.new("long", self:popOperand()[2]))
+	elseif op == 0x88 then -- l2i
+		self:pushOperand(types.new("int", self:popOperand()[2]))
 	elseif op == 0x8e then -- d2i
 		local operand = self:popOperand()
 		if types.type(operand) ~= "double" then

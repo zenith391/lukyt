@@ -6,6 +6,7 @@ public class HelloWorld {
 
 	public static void main(String[] args) throws Exception {
 		long start = System.nanoTime();
+		System.out.println("System.out: " + System.out);
 		System.out.println("Hello, World!");
 		System.out.println("OS kind: " + System.getProperty("os.name"));
 

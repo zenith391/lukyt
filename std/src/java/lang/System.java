@@ -7,6 +7,7 @@ public class System {
 
 	public static final PrintStream out = new ConsolePrintStream();
 	public static final InputStream in = new ConsoleInputStream();
+	public static final PrintStream err = out;
 
 	public static native String getenv(String name);
 	public static native String getProperty(String key);

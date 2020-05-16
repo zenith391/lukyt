@@ -41,7 +41,7 @@ function java_lang_System_arraycopy(class, method, thread, args)
 end
 
 function java_lang_Object_hashCode(class, method, thread, args)
-	local this = args[1]
+	local this = args[1][2]
 	return types.new("int", this.hashCode)
 end
 

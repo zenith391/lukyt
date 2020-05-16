@@ -22,19 +22,15 @@ public class StringBuilder {
 	}
 
 	public StringBuilder append(String str) {
-		append(str.toCharArray());
-		return this;
+		return append(str.toCharArray());
 	}
 
 	public StringBuilder append(Object obj) {
-		append(String.valueOf(obj));
-		return this;
+		return append(String.valueOf(obj));
 	}
 
 	public StringBuilder append(char c) {
-		char[] array = new char[1];
-		array[0] = c;
-		return append(array);
+		return append(new char[] {c});
 	}
 
 	public StringBuilder append(long l) {
@@ -43,6 +39,24 @@ public class StringBuilder {
 
 	public StringBuilder append(int i) {
 		return append((long) i);
+	}
+
+	public StringBuilder insert(int off, char[] chars) {
+		int orgLength = this.chars.length;
+		char[] newChars = new char[orgLength + chars.length];
+		System.arraycopy(this.chars, 0, newChars, 0, off);
+		System.arraycopy(chars, 0, newChars, off, chars.length);
+		System.arraycopy(this.chars, off, newChars, off+1, orgLength-off);
+		this.chars = newChars;
+		return this;
+	}
+
+	public StringBuilder insert(int off, char c) {
+		return insert(off, new char[] {c});
+	}
+
+	public StringBuilder insert(int off, String str) {
+		return insert(off, str.toCharArray());
 	}
 
 	public String toString() {

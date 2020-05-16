@@ -37,7 +37,20 @@ public final class Long extends Number {
 		return new Long(l);
 	}
 
-	public static native String toString(long i, int radix);
+	public static String toString(long i, long radix) {
+		StringBuilder sb = new StringBuilder();
+		while (i > 0) {
+			long digit = i % radix;
+			char ch = (char) (digit + 0x30);
+			if (digit > 9) {
+				ch = (char) (digit + 0x61);
+			}
+			sb.insert(0, ch);
+			i /= radix;
+		}
+		String s = sb.toString();
+		return s;
+	}
 
 	public static Long parseLong(String s) {
 		return parseLong(s, 10);
