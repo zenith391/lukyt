@@ -180,10 +180,6 @@ function lib:executeMethod(class, method, parameters)
 					else
 						subclass = lib.isSubclassOf(throwable[2].class[2].class, classLoader.loadClass(handler.catchClass, true))
 					end
-					print("pc : " .. tostring(self.pc))
-					print("start : " .. handler.startPc)
-					print("end : " .. handler.endPc)
-					print("is subclass : " .. tostring(subclass))
 					if self.pc >= handler.startPc and self.pc < handler.endPc and subclass then
 						foundHandler = true
 						self.pc = handler.handlerPc - 1
@@ -1039,6 +1035,10 @@ local function defaultFields(object, class)
 	for k, v in pairs(class.fields) do
 		if v.descriptor == "I" then
 			object[2].object[v.name] = types.new("int", 0)
+		elseif v.descriptor == "Z" or v.descriptor == "B" then
+			object[2].object[v.name] = types.new("byte", 0)
+		elseif v.descriptor == "J" then
+			object[2].object[v.name] = types.new("long", 0)
 		else
 			object[2].object[v.name] = types.nullReference()
 		end

@@ -39,6 +39,12 @@ public final class Long extends Number {
 
 	public static String toString(long i, long radix) {
 		StringBuilder sb = new StringBuilder();
+		if (i == 0) {
+			sb.append("0");
+		} else if (i < 0) {
+			sb.append("-");
+			i = -i;
+		}
 		while (i > 0) {
 			long digit = i % radix;
 			char ch = (char) (digit + 0x30);
