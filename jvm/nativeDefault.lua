@@ -105,7 +105,7 @@ function java_lang_Throwable_currentStackTrace(class, method, thread, args)
 			isNative = 1
 		end
 		isNative = types.new("I", isNative)
-		table.insert(stackTrace, thread:instantiateClass(objectClass, {declaringClass, methodName, fileName, types.new("int", -1), isNative}, true, "(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;IZ)V"))
+		table.insert(stackTrace, thread:instantiateClass(objectClass, {declaringClass, methodName, fileName, types.new("int", v.lineNumber), isNative}, true, "(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;IZ)V"))
 	end
 	return types.referenceForArray(stackTrace)
 end

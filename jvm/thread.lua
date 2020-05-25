@@ -2,7 +2,10 @@ local lib = {}
 local types = require("type")
 local classLoader = require("classLoader")
 
-local INTERN_STRINGS = 1 -- can be disabled to gain a bit of performance in exchange of less standard compatiblity
+-- Options can be disabled to gain a bit of performance in exchange of less standard compatiblity
+local INTERN_STRINGS = 1
+local COMPUTE_LINE_NUMBERS = 1
+
 function lib:createFrame()
 	local frame = {}
 	frame.localVariables = {}
@@ -114,12 +117,25 @@ end
 local inc = 1
 function lib:executeMethod(class, method, parameters)
 	class = method.class
+	local trace = self.stackTrace[#self.stackTrace]
+	if trace then
+		local m = trace.method
+		if m.code.lineNumbers and COMPUTE_LINE_NUMBERS == 1 then
+			for _, lineNumber in ipairs(m.code.lineNumbers) do
+				if self.pc+1 > lineNumber.startPc then
+					trace.lineNumber = lineNumber.lineNumber
+				else
+					break
+				end
+			end
+		end
+	end
 	table.insert(self.stackTrace, {
-		method = method
+		method = method,
+		lineNumber = self.lineNumber
 	})
 	if method.code.nativeName then -- native method
 		if not _ENV[method.code.nativeName] then
-			--error("Unbound native method: " .. method.class.name .. "." .. method.name)
 			table.remove(self.stackTrace)
 			return self:instantiateException("java/lang/UnsatisfiedLinkError", method.class.name .. "." .. method.name)
 		end
@@ -133,6 +149,7 @@ function lib:executeMethod(class, method, parameters)
 		local frame = self:pushNewFrame()
 		self:pushOperand(types.new("returnAddress", self.pc))
 		self.pc = 1
+		self.lineNumber = -1
 		local code = method.code.code
 		local id = 1
 		for k, v in ipairs(parameters) do
@@ -153,6 +170,7 @@ function lib:executeMethod(class, method, parameters)
 				end
 				inc = 0
 			end
+			
 			ok, ret, throwable = xpcall(self.execute, function (err)
 				print("lua error: " .. err)
 				print(debug.traceback("lua stack traceback:", 2))
@@ -1093,6 +1111,7 @@ function lib.new()
 	return setmetatable({
 		name = "main",
 		pc = 1,
+		lineNumber = 0,
 		stack = {},
 		currentFrame = nil,
 		heap = {},
