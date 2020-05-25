@@ -337,7 +337,7 @@ local function getMethodCode(thisName, constantPool, method)
 	local exceptionHandlers = {}
 	for i=1, number do
 		local startPc = readU2T(attr, start) + 1
-		local endPc = readU2T(attr, start+8*i+2) + 1
+		local endPc = readU2T(attr, start+2) + 1
 		local handlerPc = readU2T(attr, start+4) + 1
 		local catchType = readU2T(attr, start+6)
 		if catchType == 0 then
