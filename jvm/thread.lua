@@ -201,7 +201,9 @@ function lib:executeMethod(class, method, parameters)
 					if self.pc >= handler.startPc and self.pc < handler.endPc and subclass then
 						foundHandler = true
 						self.pc = handler.handlerPc - 1
+						local oldStartPc = self.currentFrame.operandStack[1]
 						self.currentFrame.operandStack = {}
+						self:pushOperand(types.new("returnAddress", oldStartPc))
 						self:pushOperand(throwable)
 						ret = true -- continue execution
 						throwable = nil
