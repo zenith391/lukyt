@@ -1,6 +1,14 @@
 package java.io;
 
-public abstract class PrintStream {
+public abstract class PrintStream extends FilterOutputStream /*implements Appendable*/ {
+
+	public PrintStream(OutputStream o) {
+		super(o);
+	}
+
+	public void append(char c) {
+
+	}
 
 	public void println(String str) {
 		print(str + "\n");

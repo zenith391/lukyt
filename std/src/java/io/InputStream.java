@@ -1,10 +1,10 @@
 package java.io;
 
-public abstract class InputStream {
+public abstract class InputStream implements Closeable {
 
-	public abstract int read();
+	public abstract int read() throws IOException;
 
-	public int read(byte[] bytes, int off, int len) {
+	public int read(byte[] bytes, int off, int len) throws IOException {
 		int end = off + len;
 		int readed = 0;
 		for (int i = off; i < end; i++) {
@@ -18,21 +18,21 @@ public abstract class InputStream {
 		return len;
 	}
 
-	public void close() {}
+	public void close() throws IOException {}
 
-	public long skip(long n) {
+	public long skip(long n) throws IOException {
 		return 0;
 	}
 
-	public int available() {
+	public int available() throws IOException {
 		return 0;
 	}
 
-	public int read(byte[] bytes) {
+	public int read(byte[] bytes) throws IOException {
 		return read(bytes, 0, bytes.length);
 	}
 
-	public void reset() {}
+	public void reset() throws IOException {}
 
 	public boolean markSupported() {
 		return false;

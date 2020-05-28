@@ -175,11 +175,26 @@ function lib:executeMethod(class, method, parameters)
 				print("lua error: " .. err)
 				print(debug.traceback("lua stack traceback:", 2))
 				print("reduced java stack traceback:")
+				local trace = self.stackTrace[#self.stackTrace]
+				if trace then
+					local m = trace.method
+					if m.code.lineNumbers and COMPUTE_LINE_NUMBERS == 1 then
+						for _, lineNumber in ipairs(m.code.lineNumbers) do
+							if self.pc+1 > lineNumber.startPc then
+								trace.lineNumber = lineNumber.lineNumber
+							else
+								break
+							end
+						end
+					end
+				end
 				for i=#self.stackTrace, 1, -1 do
 					local trace = self.stackTrace[i]
-					io.write("\t" .. trace.method.class.name .. "." .. trace.method.name)
-					if i == #self.stackTrace then
-						io.write(":" .. self.pc)
+					io.write("\tat " .. trace.method.class.name .. "." .. trace.method.name)
+					if trace.lineNumber ~= -1 then
+						io.write(":" .. trace.lineNumber)
+					else
+						io.write(":?")
 					end
 					io.write("\n")
 				end

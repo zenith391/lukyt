@@ -1,17 +1,19 @@
 package java.io;
 
-public class FileOutputStream implements Closeable {
+public class FileInputStream implements Closeable {
 	private FileDescriptor fd;
+	private File file;
+	private int pos;
 
-	public FileOutputStream(String path) {
+	public FileInputStream(String path) {
 		this(new File(path));
 	}
 
-	public FileOutputStream(File file) {
+	public FileInputStream(File file) {
 		this(FileDescriptor.open(file, FileDescriptor.MODE_W));
 	}
 
-	public FileOutputStream(FileDescriptor fd) {
+	public FileInputStream(FileDescriptor fd) {
 		this.fd = fd;
 	}
 
@@ -23,6 +25,10 @@ public class FileOutputStream implements Closeable {
 		return fd;
 	}
 
+	public int available() {
+		return fd.size() - pos;
+	}
+
 	protected void finalize() {
 		try {
 			close();
@@ -31,11 +37,10 @@ public class FileOutputStream implements Closeable {
 		}
 	}
 
-	public void write(int b) {
-		fd.write(new byte[] {(byte) b});
+	public int read() throws IOException {
+		pos++;
+		return read0();
 	}
 
-	public void write(byte[] b) {
-		fd.write(b);
-	}
+	private native int read0();
 }

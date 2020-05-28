@@ -1,6 +1,6 @@
 package java.lang;
 
-public class String {
+public class String implements CharSequence {
 
 	private char[] chars; // not Unicode-proof
 	private boolean hashCodeDefined;
@@ -69,6 +69,13 @@ public class String {
 
 	public char charAt(int index) {
 		return chars[index];
+	}
+
+	public CharSequence subSequence(int start, int end) {
+		int len = end - start + 1;
+		char[] ca = new char[len];
+		System.arraycopy(chars, start, ca, 0, len);
+		return new String(ca);
 	}
 
 	public String concat(String str) {
