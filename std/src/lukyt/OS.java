@@ -1,7 +1,7 @@
 package lukyt;
 
 /**
-	This package is a binding around Lua <code>os</code> API
+	Binding class around Lua <code>os</code> API, it uses {@link LuaObject}.
 **/
 public class OS {
 

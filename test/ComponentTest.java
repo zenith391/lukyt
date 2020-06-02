@@ -1,4 +1,4 @@
-import lukyt.oc.Component;
+import cil.li.oc.Component;
 
 public class ComponentTest {
 

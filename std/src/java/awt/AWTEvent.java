@@ -1,5 +1,7 @@
 package java.awt;
 
+import java.util.EventObject;
+
 public class AWTEvent extends EventObject {
 
 	protected int id;

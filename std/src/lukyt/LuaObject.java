@@ -2,6 +2,9 @@ package lukyt;
 
 import java.util.*;
 
+/**
+	Java class wrapping a Lua value. Can be used for Lua interoptability.
+**/
 public class LuaObject {
 	private long handle;
 
@@ -26,18 +29,37 @@ public class LuaObject {
 	private static native long nilHandle();
 	private static native long envHandle();
 
+	/**
+		Cast a String to a LuaObject.
+	**/
 	public static LuaObject fromString(String str) {
 		return new LuaObject(handleFromS(str));
 	}
 
+	/**
+		Cast a primitive <code>long</code> value to a LuaObject.
+	**/
 	public static LuaObject fromLong(long l) {
 		return new LuaObject(handleFromL(l));
 	}
 
+	/**
+		Cast a primitive <code>double</code> value to a LuaObject.
+	**/
 	public static LuaObject fromDouble(double d) {
 		return new LuaObject(handleFromD(d));
 	}
 
+	/**
+		Auto-cast object <code>o</code> to a LuaObject.
+		Object must be one of:
+		<ul>
+			<li>Double</li>
+			<li>Long</li>
+			<li>Integer</li>
+			<li>String</li>
+		</ul>
+	**/
 	public static LuaObject from(Object o) {
 		if (o == null) {
 			return LuaObject.NIL;
@@ -58,21 +80,50 @@ public class LuaObject {
 		this.handle = handle;
 	}
 
+	/**
+		Init the LuaObject with a new <code>nil</code> value.
+	**/
 	public LuaObject() {
 		this(nilHandle());
 	}
 
+	/**
+		Use path <code>path</code> to find the LuaObject through {@link #_ENV}.<br/>
+		Childrens are separated by dots (<code>.</code>)<br/><br/>
+		Example: <code>os.time</code> returns the child named <code>time</code>
+		of the <code>os</code> table which is a child of the {@link #_ENV} table.
+	**/
 	public LuaObject(String path) {
 		// TODO
 	}
 
+	/**
+		Execute this Lua Object as a function with arguments <code>args</code> and return
+		all of its results as LuaObjects.
+	**/
 	public native LuaObject[] executeAll(LuaObject[] args);
 	public native String getType();
+	/**
+		Returns this LuaObject as a primitive <code>double</code> value.<br/>
+		If the Lua object isn't a <code>number</code>, this returns 0.
+	**/
 	public native double asDouble();
+	/**
+		Returns this LuaObject as a primitive <code>long</code> value.<br/>
+		If the Lua object isn't a <code>number</code>, this returns 0.<br/>
+		The number is floored if necessary.
+	**/
 	public native long asLong();
+	/**
+		Returns this LuaObject as a String object.<br/>
+		If the Lua object isn't a <code>string</code>, this returns the result of <code>tostring()</code>.<br/>
+	**/
 	public native String asString();
 	private native long get0(String key);
 
+	/**
+		Returns this LuaObject as either a String, a Double, a Boolean or a <code>null</code> value.
+	**/
 	public Object asObject() {
 		String type = getType();
 		if (type.equals("number")) {
@@ -150,6 +201,9 @@ public class LuaObject {
 
 	private native String[] keys0();
 
+	/**
+		Returns the list of all the keys used in this Lua <code>table</code> object.
+	**/
 	public List<String> keys() {
 		if (!getType().equals("table")) {
 			throw new TypeNotPresentException(getType() + " != table", null);
@@ -162,11 +216,14 @@ public class LuaObject {
 		return list;
 	}
 
+	/**
+		Returns the list of all the values in this Lua <code>table</code> object.
+	**/
 	public List<LuaObject> values() {
-		ArrayList<LuaObject> list = new ArrayList<LuaObject>();
 		List<String> keys = keys();
-		for (int i = 0; i < keys.size(); i++) {
-			list.add(get(keys.get(i)));
+		ArrayList<LuaObject> list = new ArrayList<LuaObject>(keys.size());
+		for (String key : keys) {
+			list.add(get(key));
 		}
 		return list;
 	}
@@ -174,7 +231,7 @@ public class LuaObject {
 	/**
 		Returns <code>true</code> if this <b>object</b> only contains numerical keys.
 		The keys do not have to be in sequencial.<br/>
-		Example: {1, 2, 3, 4} -> luaObject.isArray() -> <code>true</code><br/>
+		Example: {1, 2, 3, [5]=4} -> luaObject.isArray() -> <code>true</code>
 	**/
 	public boolean isArray() {
 		List<String> keys = keys();
@@ -188,27 +245,39 @@ public class LuaObject {
 	}
 
 	/**
-		Returns <code>true/<code> if {@link lukyt.LuaObject.getType()} returns <code>"nil"</code>.
+		Returns <code>true</code> if {@link #getType()} returns <code>"nil"</code>.
 	**/
 	public boolean isNil() {
 		return getType().equals("nil");
 	}
 
 	/**
-		Returns <code>true/<code> if {@link lukyt.LuaObject.getType()} returns <code>"table"</code>.
+		Returns <code>true</code> if {@link #getType()} returns <code>"table"</code>.
 	**/
 	public boolean isTable() {
 		return getType().equals("table");
 	}
 
+	/**
+		Execute this Lua Object as a function no arguments and
+		return the first return value.
+	**/
 	public LuaObject execute() {
 		return execute(new LuaObject[0]);
 	}
 
+	/**
+		Execute this Lua Object as a function with one argument <code>arg</code> and
+		return the first return value.
+	**/
 	public LuaObject execute(LuaObject arg) {
 		return executeAll(new LuaObject[] {arg})[0];
 	}
 
+	/**
+		Execute this Lua Object as a function with arguments <code>args</code> and
+		return the first return value.
+	**/
 	public LuaObject execute(LuaObject[] args) {
 		return executeAll(args)[0];
 	}

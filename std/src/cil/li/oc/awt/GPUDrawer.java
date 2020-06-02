@@ -1,4 +1,4 @@
-package lukyt.oc.awt;
+package cil.li.oc.awt;
 
 public interface GPUDrawer {
 
