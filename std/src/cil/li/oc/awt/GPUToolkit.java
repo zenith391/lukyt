@@ -35,10 +35,11 @@ public class GPUToolkit {
 		Object[] size = Component.invoke(gpu, "getViewport", new Object[0]);
 		Double width = (Double) size[0];
 		Double height = (Double) size[1];
-		return new Dimension(width.intValue(), height.intValue());
+		return new Dimension(width.intValue(), height.intValue() * 2);
 	}
 
 	public void beep() {
 		// TODO computer.beep
+		LuaObject._ENV.get("computer").executeChild("beep", new LuaObject[] {LuaObject.fromLong(440), LuaObject.fromDouble(0.5D)});
 	}
 }

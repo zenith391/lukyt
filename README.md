@@ -1,8 +1,10 @@
 # Lukyt
 Lukyt is a toy project, a small JVM made in Lua supporting Java 6.
-The most important reason i made it (other than being a toy project) was to run it on the [OpenComputers](https://github.com/MightyPirates/OpenComputers) mod. I am currently trying to port AWT to it :)
+The most important reason i made it (other than being a toy project) was to run it on the [OpenComputers](https://github.com/MightyPirates/OpenComputers) mod. I am currently porting AWT to it to use Java software on OpenComputers.
 
-This also supports a shared OC Java API that this JVM shares with OCJ (link to come, will be released by [@TYKUHN2](https://github.com/TYKUHN2)), its javadoc [on my website](https://bwsecondary.ddns.net/jd/cil/li/oc/package-summary.html), Lukyt also have a Lua interop, which also haves a [javadoc](https://bwsecondary.ddns.net/jd/lukyt/package-summary.html).
+This also supports a OpenComputers Java API shared with OCJ (link to come, will be released by [@TYKUHN2](https://github.com/TYKUHN2)), this way programs are compatible for both way of running Java on OC, its javadoc is available on [my website](https://bwsecondary.ddns.net/jd/cil/li/oc/package-summary.html), Lukyt also have a Lua interop, which also haves a [javadoc](https://bwsecondary.ddns.net/jd/lukyt/package-summary.html).
+
+Note that unlike Luje, this is aimed towards features: OC and Lua interoptability.
 
 [Roadmap](https://github.com/zenith391/lukyt/projects/1)
 

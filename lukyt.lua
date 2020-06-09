@@ -31,29 +31,29 @@ if package.cpath then
 	end
 end
 systemProperties = {
-	["java.version"] = "0.1",
+	["java.version"] = "6",
 	["java.vendor"] = "Lukyt",
 	["java.vendor.url"] = "https://github.com/zenith391/lukyt",
-	["java.vm.specification.version"] = "2",
+	["java.vm.specification.version"] = "6",
 	["java.vm.specification.vendor"] = "Oracle?",
-	["java.vm.specification.name"] = "Playground",
-	["java.vm.version"] = "0.1",
+	["java.vm.specification.name"] = "Mustang",
+	["java.vm.version"] = "6",
 	["java.vm.vendor"] = "Lukyt",
 	["java.vm.name"] = "Lukyt",
-	["java.class.version"] = "46.0",
+	["java.class.version"] = "50.0",
 	["java.class.path"] = "", -- TODO
 	["java.library.path"] = "/;./",
-	["java.io.tmpdir"] = "",
+	["java.io.tmpdir"] = "/tmp",
 	["java.compiler"] = "no jit",
 	["os.name"] = osName,
-	["os.arch"] = "unknown",
-	["os.version"] = "unknown",
+	["os.arch"] = "x86", -- some default
+	["os.version"] = "1.0", -- some default
 	["file.separator"] = fileSeparator,
 	["line.separator"] = lineSeparator,
 	["path.separator"] = ":",
-	["user.name"] = "Unknown",
+	["user.name"] = os.getenv("USER") or "Unknown",
 	["user.home"] = os.getenv("HOME"),
-	["user.dir"] = "?"
+	["user.dir"] = os.getenv("PWD") or "PWD not detected"
 }
 
 for k, v in ipairs(args) do

@@ -2,9 +2,23 @@ package java.lang;
 
 public class Class<T> {
 	private long ref; // class reference id
+	private ClassLoader classLoader;
+
+	public static Class<?> forName(String name) {
+		return forName(name, true, ClassLoader.getSystemClassLoader());
+	}
+
+	public static Class<?> forName(String name, boolean initialize, ClassLoader loader) {
+		return loader.loadClass(name, initialize);
+	}
 
 	private Class(long ref) {
+		this(ClassLoader.getSystemClassLoader(), ref);
+	}
+
+	private Class(ClassLoader classLoader, long ref) {
 		this.ref = ref;
+		this.classLoader = classLoader;
 	}
 
 	public <T> T newInstance() {

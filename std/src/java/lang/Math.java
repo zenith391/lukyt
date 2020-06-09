@@ -31,16 +31,21 @@ public final class Math {
 	}
 
 	public static double signum(double d) {
-		if (d > 0)
-			return 1;
-		else if (d < 0)
-			return -1;
+		if (d > 0d)
+			return 1d;
+		else if (d < 0d)
+			return -1d;
 		else
-			return 0;
+			return 0d;
 	}
 
 	public static float signum(float f) {
-		return (float) signum((double) f);
+		if (d > 0f)
+			return 1f;
+		else if (d < 0f)
+			return -1f;
+		else
+			return 0f;
 	}
 
 	public static double sin(double a) {

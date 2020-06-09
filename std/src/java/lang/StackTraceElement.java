@@ -40,7 +40,7 @@ public class StackTraceElement {
 	}
 
 	public String toString() {
-		StringBuffer sb = new StringBuffer();
+		StringBuilder sb = new StringBuilder();
 		sb.append(declaringClass);
 		sb.append('.');
 		sb.append(getMethodName());

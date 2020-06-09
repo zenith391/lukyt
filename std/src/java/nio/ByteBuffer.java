@@ -128,6 +128,7 @@ public abstract class ByteBuffer {
 	public int hashCode() {
 		int x = remaining();
 		x += (int) get(limit() - 1);
+		return x;
 	}
 
 }

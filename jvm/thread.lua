@@ -222,6 +222,7 @@ function lib:executeMethod(class, method, parameters)
 						self:pushOperand(throwable)
 						ret = true -- continue execution
 						throwable = nil
+						break
 					end
 				end
 				if not foundHandler then
@@ -416,7 +417,9 @@ function lib:execute(class, code)
 		local idx = self:popOperand()[2]
 		local array = self:popOperand()
 		if idx < 0 then
-			error("negativearrayindex: trying to set array with index " .. idx)
+			error("negativearrayindex: trying to get array with index " .. idx)
+		elseif idx >= #array[2].array then
+			error("arrayindexoutofbounds: trying to get array with index " .. idx)
 		end
 		self:pushOperand(array[2].array[idx+1])
 	elseif op == 0x36 or op == 0x3b or op == 0x3c or op == 0x3d or op == 0x3e then -- istore and istore_<n>

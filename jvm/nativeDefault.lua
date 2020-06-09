@@ -59,6 +59,15 @@ function java_lang_System_getProperty(class, method, thread, args)
 	end
 end
 
+function java_lang_System_getenv(class, method, thread, args)
+	local name = native.stringToLua(args[1])
+	if os.getenv(name) == nil then
+		return types.nullReference()
+	else
+		return native.luaToString(os.getenv(name), thread)
+	end
+end
+
 function java_lang_Runtime_gc(class, method, thread, args)
 	collectgarbage("collect")
 end
@@ -69,17 +78,6 @@ end
 
 function java_lang_Runtime_halt(class, method, thread, args)
 	os.exit(args[2][2])
-end
-
-function java_lang_Long_parseLong(class, method, thread, args)
-	local s = native.stringToLua(args[1])
-	local radix = args[2][2]
-	return types.new("long", tonumber(s, radix))
-end
-
-function java_lang_Long_toString(class, method, thread, args)
-	local s = native.luaToString(tostring(args[1][2]), thread)
-	return s
 end
 
 function java_lang_Throwable_currentStackTrace(class, method, thread, args)
@@ -123,7 +121,7 @@ function java_lang_String_intern(class, method, thread, args)
 			luaRepresentation,
 			this
 		}
-	});
+	})
 	return this
 end
 

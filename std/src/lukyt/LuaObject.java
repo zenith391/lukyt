@@ -279,6 +279,11 @@ public class LuaObject {
 		return the first return value.
 	**/
 	public LuaObject execute(LuaObject[] args) {
-		return executeAll(args)[0];
+		LuaObject[] lua = executeAll(args);
+		if (lua.length == 0) {
+			return null;
+		} else {
+			return lua[0];
+		}
 	}
 }

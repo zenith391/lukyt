@@ -8,9 +8,10 @@ function native.stringToLua(obj)
 	local chars = obj[2].object["chars"]
 	local array = chars[2].array
 	local str = ""
+	local toChar = (utf8 and utf8.char) or string.char -- use utf8 if available
 
 	for k, v in ipairs(array) do
-		str = str .. string.char(v[2])
+		str = str .. toChar(v[2])
 	end
 
 	return str
@@ -22,8 +23,10 @@ function native.luaToString(str, thread)
 		error("could not import java/lang/String !!! " .. err)
 	end
 	local array = {}
+	local toByte = (utf8 and utf8.codepoint) or string.byte -- use utf8 if available
 	for i=1, #str do
-		table.insert(array, types.new("char", string.byte(str:sub(i,i))))
+		-- TODO: support characters with code point above 65,535
+		table.insert(array, types.new("char", toByte(str:sub(i,i))))
 	end
 	local object = thread:instantiateClass(objectClass, {types.referenceForArray(array)}, true, "([C)V")
 	return object
