@@ -2,7 +2,7 @@ package java.awt.event;
 
 import java.awt.AWTEvent;
 
-public class KeyEvent extends AWTEvent {
+public class KeyEvent extends InputEvent {
 
 	protected long when;
 	protected int modifiers;

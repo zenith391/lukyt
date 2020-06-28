@@ -223,3 +223,26 @@ end
 function lukyt_LuaObject_getType(class, method, thread, args)
 	return native.luaToString(type(args[1][2].object.handle._lua), thread)
 end
+
+
+function java_lang_Thread_initNewHandle(class, method, thread, args)
+	local th = require("thread").new()
+	local t = types.new("long", th.id)
+	t._thread = th
+	th._cl = class
+	th._method = require("thread").findMethod(args[1][2].class[2].class, "run", "()V")
+	th._args = {args[1]}
+	th.coroutine = coroutine.create(require("thread").executeMethod)
+	th.coroutineStarted = true
+	return t
+end
+
+function java_lang_getMainThreadHandle(class, method, thread, args)
+	os.exit(0)
+end
+
+function java_lang_Thread_start(class, method, thread, args)
+	local th = args[1][2].object.handle._thread
+	print("start thread")
+	table.insert(runningThreads, th)
+end

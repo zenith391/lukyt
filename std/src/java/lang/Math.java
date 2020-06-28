@@ -40,9 +40,9 @@ public final class Math {
 	}
 
 	public static float signum(float f) {
-		if (d > 0f)
+		if (f > 0f)
 			return 1f;
-		else if (d < 0f)
+		else if (f < 0f)
 			return -1f;
 		else
 			return 0f;

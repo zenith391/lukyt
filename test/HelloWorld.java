@@ -39,6 +39,16 @@ public class HelloWorld {
 		System.out.println("Welcome to this.. testing program?");
 		System.out.println("Type \"throw\" to throw an exception");
 		System.out.println("Type \"woops\" to throw a catched exception");
+
+		Thread th = new Thread() {
+			public void run() {
+				while (true) {
+					System.out.println("test");
+				}
+			}
+		};
+		th.start();
+
 		while (true) {
 			String str = "";
 			char c = 0;

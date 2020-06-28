@@ -15,10 +15,12 @@ public class Thread {
 	public static int MIN_PRIORITY = 1;
 
 	static {
-		thread.add(getMainThread());
+		//threads.add(new Thread(getMainThreadHandle()));
 	}
 
-	public Thread() {}
+	public Thread() {
+		this.handle = initNewHandle();
+	}
 
 	private Thread(long handle) {
 		this.handle = handle;
@@ -29,8 +31,8 @@ public class Thread {
 	}
 
 	public Thread(Runnable run, String name) {
+		this();
 		this.run = run;
-		initNewHandle();
 		if (name == null) {
 			name = "Thread-" + handle;
 		}
@@ -49,7 +51,7 @@ public class Thread {
 
 	public native StackTraceElement[] getStackTrace();
 
-	private native void initNewHandle();
+	private native long initNewHandle();
 
 	public static Thread currentThread() {
 		long currHandle = getCurrentThreadHandle();
@@ -75,5 +77,5 @@ public class Thread {
 	}
 
 	private static native long getCurrentThreadHandle();
-	private static native Thread getMainThread();
+	private static native long getMainThreadHandle();
 }

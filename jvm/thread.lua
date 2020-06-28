@@ -5,6 +5,7 @@ local classLoader = require("classLoader")
 -- Options can be disabled to gain a bit of performance in exchange of less standard compatiblity
 local INTERN_STRINGS = 1
 local COMPUTE_LINE_NUMBERS = 1
+local nextId = 0
 
 function lib:createFrame()
 	local frame = {}
@@ -164,13 +165,12 @@ function lib:executeMethod(class, method, parameters)
 		local ret = true
 		local throwable = nil
 		while ret == true do
-			if inc == 5 then
+			if inc >= 5 then
 				if coroutine.isyieldable() then
 					coroutine.yield()
 				end
-				inc = 0
+				inc = 1
 			end
-			
 			ok, ret, throwable = xpcall(self.execute, function (err)
 				print("lua error: " .. err)
 				print(debug.traceback("lua stack traceback:", 2))
@@ -830,7 +830,7 @@ function lib:execute(class, code)
 		table.insert(args, ref)
 		reverse(args)
 		if ref[2].type == "null" then
-			return "throwable", self:instantiateException("java/lang/NullPointerException", "attempted to call method on nil")
+			return "throwable", self:instantiateException("java/lang/NullPointerException", "attempted to call method on null value")
 		end
 		local cl = ref[2].class[2].class
 		local method, methodClass = findMethod(cl, nat.name.text, nat.descriptor.text)
@@ -902,7 +902,7 @@ function lib:execute(class, code)
 		table.insert(args, ref)
 		reverse(args)
 		if ref[2].type == "null" then
-			return "throwable", self:instantiateException("java/lang/NullPointerException", "attempted to call method on nil")
+			return "throwable", self:instantiateException("java/lang/NullPointerException", "attempted to call method on null value")
 		end
 		local cl = ref[2].class[2].class
 		local method, methodClass = findMethod(cl, nat.name.text, nat.descriptor.text)
@@ -1048,7 +1048,7 @@ function lib:execute(class, code)
 		end
 	elseif op == 0xc6 then -- ifnull
 		local branch = string.unpack(">i2", string.char(code[self.pc+1]) .. string.char(code[self.pc+2]))
-		local val = self:popOperand()
+		local val = self:popOperand()[2]
 		if val.type == "null" then
 			self.pc = self.pc + branch - 1
 		else
@@ -1128,14 +1128,17 @@ function lib:instantiateClass(class, parameters, doInit, initDescriptor)
 end
 
 function lib.new()
+	nextId = nextId + 1
 	return setmetatable({
-		name = "main",
+		name = "Thread-" .. (nextId-1),
 		pc = 1,
 		lineNumber = 0,
 		stack = {},
 		currentFrame = nil,
 		heap = {},
-		stackTrace = {}
+		stackTrace = {},
+		coroutine = nil,
+		id = nextId
 	}, {
 		__index = lib
 	})

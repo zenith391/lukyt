@@ -141,14 +141,48 @@ for k,v in pairs(cl.methods) do
 	end
 end
 
-local argsArray = types.referenceForArray({})
+local argsArray = {}
 printDebug("Calling main(String[])")
-local throwable = mainThread:executeMethod(cl, mainMethod, {object, argsArray})
 
-if throwable then
-	local throwedClass = throwable[2].class[2].class
-	io.stdout:write("Exception in thread \"" .. mainThread.name .. "\" ")
-	mainThread:executeMethod(throwedClass, thread.findMethod(throwedClass, "printStackTrace", "()V"), {throwable})
+mainThread.coroutine = coroutine.create(thread.executeMethod)
+mainThread.coroutineStarted = true
+
+mainThread.name = "main"
+
+mainThread._cl = cl
+mainThread._method = mainMethod
+mainThread._args = argsArray
+
+runningThreads = {mainThread}
+
+while #runningThreads > 0 do
+	for k, th in pairs(runningThreads) do
+		local resume, throwable
+		if th.coroutineStarted then
+			resume, throwable = coroutine.resume(th.coroutine, th, th._cl, th._method, th._args)
+			th.coroutineStarted = false
+		else
+			resume, throwable = coroutine.resume(th.coroutine)
+		end
+		if not resume then
+			io.stderr:write("Lua error in thread \"" .. th.name .. "\": " .. throwable .. "\n")
+			print("Java stack trace:")
+			for k, v in pairs(th.stackTrace) do
+				print("\tat " .. v.method.class.name .. " " .. v.method.name .. ":" .. v.lineNumber)
+			end
+			runningThreads[k] = nil
+		else
+			if coroutine.status(th.coroutine) == "dead" then
+				if throwable then
+					local throwedClass = throwable[2].class[2].class
+					io.stderr:write("Exception in thread \"" .. th.name .. "\" ")
+					mainThread:executeMethod(throwedClass, thread.findMethod(throwedClass, "printStackTrace", "()V"), {throwable})
+				end
+				runningThreads[k] = nil
+			end
+		end
+		--print(#runningThreads)
+	end
 end
 
 package.path = oldPath
