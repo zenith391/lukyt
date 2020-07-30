@@ -1,14 +1,20 @@
 package java.lang;
 
 public final class Long extends Number {
-	public static long MAX_VALUE = 0;
-	public static long MIN_VALUE = 0;
+	public static long MAX_VALUE = 9223372036854775807L;
+	public static long MIN_VALUE = -9223372036854775808L;
 	public static int SIZE = 64; // depends on Lua 5.3
+	public static int BYTES = 8;
+	public static Class<Long> TYPE = Long.class;
 
 	private long value;
 
 	public Long(long l) {
 		this.value = l;
+	}
+
+	public Long(String str) {
+		this.value = parseLong(str);
 	}
 
 	private static long toDigit(char ch, int radix) {
@@ -22,19 +28,25 @@ public final class Long extends Number {
 		return l;
 	}
 
-	public static Long parseLong(String s, int radix) {
+	public static long parseLong(String s, int radix) {
+		if (s == null || s.length() == 0) throw new NumberFormatException("null or empty string");
+		s = s.toLowerCase();
 		int j = 0;
 		long l = 0;
-		for (int i = s.length(); i > 0; i--) {
+		char sign = s.charAt(0);
+		boolean hasSign = sign == '+' || sign == '-';
+		for (int i = s.length()-1; i > hasSign ? 1 : 0; i--) {
 			char ch = s.charAt(i);
 			long digit = toDigit(ch, radix);
-			if (digit == -1) {
+			if (digit == -1 || digit > radix) {
 				throw new NumberFormatException(s);
 			}
 			l += digit * (j+1);
 			j++;
 		}
-		return new Long(l);
+		if (sign == '-')
+			l = -l;
+		return l;
 	}
 
 	public static String toString(long i, long radix) {
@@ -58,7 +70,7 @@ public final class Long extends Number {
 		return s;
 	}
 
-	public static Long parseLong(String s) {
+	public static long parseLong(String s) {
 		return parseLong(s, 10);
 	}
 

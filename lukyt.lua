@@ -168,7 +168,7 @@ while #runningThreads > 0 do
 			io.stderr:write("Lua error in thread \"" .. th.name .. "\": " .. throwable .. "\n")
 			print("Java stack trace:")
 			for k, v in pairs(th.stackTrace) do
-				print("\tat " .. v.method.class.name .. " " .. v.method.name .. ":" .. v.lineNumber)
+				print("\tat " .. v.method.class.name .. " " .. v.method.name .. ":" .. tostring(v.lineNumber))
 			end
 			runningThreads[k] = nil
 		else
@@ -176,7 +176,10 @@ while #runningThreads > 0 do
 				if throwable then
 					local throwedClass = throwable[2].class[2].class
 					io.stderr:write("Exception in thread \"" .. th.name .. "\" ")
-					mainThread:executeMethod(throwedClass, thread.findMethod(throwedClass, "printStackTrace", "()V"), {throwable})
+					local throwable = th:executeMethod(throwedClass, thread:findMethod(throwedClass, "printStackTrace", "()V"), {throwable})
+					if throwable then
+						io.stderr:write("\n... Exception while printing unhandled exception in thread \"" .. th.name .. "\"\n")
+					end
 				end
 				runningThreads[k] = nil
 			end

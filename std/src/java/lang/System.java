@@ -1,13 +1,13 @@
 package java.lang;
 
 import java.io.*;
-import lukyt.OS;
+import lukyt.Os;
 
 public class System {
 
-	public static final PrintStream out = new ConsolePrintStream();
+	public static final PrintStream out = new PrintStream(new FileOutputStream(FileDescriptor.out));
 	public static final InputStream in = new ConsoleInputStream();
-	public static final PrintStream err = out;
+	public static final PrintStream err = new PrintStream(new FileOutputStream(FileDescriptor.err));
 
 	public static native String getenv(String name);
 	public static native String getProperty(String key);
@@ -17,14 +17,14 @@ public class System {
 		Note: the default Lua timer only haves second precision and thus, this function is NOT to be used for benchmarking
 	**/
 	public static long currentTimeMillis() {
-		return (long) (OS.time() * 1000);
+		return (long) (Os.time() * 1000);
 	}
 
 	/**
 		Note: based on the CPU time to allow more precision
 	**/
 	public static long nanoTime() {
-		return (long) (OS.clock() * 1000000000);
+		return (long) (Os.clock() * 1000000000);
 	}
 
 	public static String getProperty(String key, String def) {

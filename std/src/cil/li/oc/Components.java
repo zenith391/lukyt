@@ -1,11 +1,14 @@
 package cil.li.oc;
+
 import lukyt.LuaObject;
 
-public final class Component {
+import cil.li.oc.proxies.*;
+
+public final class Components {
 
 	private static final LuaObject inst = Utils.require.execute(LuaObject.fromString("component"));
 
-	private Component() {}
+	private Components() {}
 
 	/**
 		Returns the documentation string for the method with the specified name of the component
@@ -51,10 +54,18 @@ public final class Component {
 		Unlike Lua, this returns the address.<br/>
 		@throws UnsupportedOperationException when the environment doesn't support getPrimary() (ex: no OS or the OS doesn't use that function).
 	**/
-	public static String getPrimary(String type) {
-		// getPrimary(type).address
+	public static String getPrimaryAddress(String type) {
 		return inst.executeChild("getPrimary", new LuaObject[] {LuaObject.fromString(type)})
 			.get("address").asString();
+	}
+
+	public static <T extends ComponentProxy> T getPrimary(String type) {
+		LuaObject l = inst.executeChild("getPrimary", new LuaObject[] {LuaObject.fromString(type)});
+		if (type.equals("gpu")) {
+			return (T) new GPUProxy(l);
+		} else {
+			throw new IllegalArgumentException("type not supported");
+		}
 	}
 
 	/**

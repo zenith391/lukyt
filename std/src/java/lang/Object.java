@@ -14,6 +14,19 @@ public class Object {
 
 	protected void finalize() throws Throwable {}
 
+	public final native void notify();
+	public final native void notifyAll();
+
+	public final native void wait(long timeout) throws InterruptedException;
+
+	public final void wait(long timeout, int nanos) throws InterruptedException {
+		wait(timeout);
+	}
+
+	public final void wait() throws InterruptedException {
+		wait(0);
+	}
+
 	public final Class<?> getClass() {
 		if (thizClass == null) {
 			thizClass = newClass();

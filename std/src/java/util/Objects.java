@@ -20,17 +20,13 @@ public final class Objects {
 	}
 
 	public static int hashCode(Object o) {
-		if (o == null) {
-			return 0;
-		} else {
-			return o.hashCode();
-		}
+		return o == null ? 0 : o.hashCode();
 	}
 
 	public static int hash(Object... values) {
 		int hash = 1;
 		for (Object o : values) {
-			hash = 31 * hash + (o == null ? 0 : o.hashCode());
+			hash = 31 * hash + hashCode(o);
 		}
 		return hash;
 	}

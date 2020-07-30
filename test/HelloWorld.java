@@ -40,14 +40,14 @@ public class HelloWorld {
 		System.out.println("Type \"throw\" to throw an exception");
 		System.out.println("Type \"woops\" to throw a catched exception");
 
-		Thread th = new Thread() {
+		/*Thread th = new Thread() {
 			public void run() {
 				while (true) {
 					System.out.println("test");
 				}
 			}
 		};
-		th.start();
+		th.start();*/
 
 		while (true) {
 			String str = "";

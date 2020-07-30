@@ -2,6 +2,10 @@
 local freqs = {}
 local types = require("type")
 
+--- If cond is false, then the method will fallback execution to interpreter
+local function guard(cond)
+end
+
 function freqs.compile(method)
 	local class = method.class
 	local out = ""
@@ -24,8 +28,14 @@ function freqs.compile(method)
 
 	thread:pushOperand(types.new("returnAddress", thread.pc))
 	thread.pc = 1
+	local id = 1
 	for k, v in ipairs(params) do
-		frame.localVariables[k] = v
+		thread:setLocalVariable(id, v)
+		if v[1] == "J" or v[1] == "D" then
+			id = id + 2
+		else
+			id = id + 1
+		end
 	end
 	local ret = nil
 	]]
@@ -33,12 +43,38 @@ function freqs.compile(method)
 	local jumps = {}
 	local pc = 1
 
-	pc = 1
-	while pc < #code do
+	-- TODO detect jumps
+
+	while pc <= #code do
 		local op = code[pc]
+		--print(pc .. ": " .. string.format("0x%x", op))
+		if op >= 0x99 and op <= 0xa4 then -- many ifs
+			local branch = string.unpack(">i2", string.char(code[pc+1]) .. string.char(code[pc+2]))
+			table.insert(jumps, pc+branch-1)
+			pc = pc + 2
+		elseif op == 0xa7 then -- goto
+			local branch = string.unpack(">i2", string.char(code[pc+1]) .. string.char(code[pc+2]))
+			table.insert(jumps, pc+branch-1)
+			pc = pc + 2
+		elseif op == 0xc6 then -- ifnull
+			local branch = string.unpack(">i2", string.char(code[pc+1]) .. string.char(code[pc+2]))
+			table.insert(jumps, pc+branch-1)
+			pc = pc + 2
+		elseif op == 0xc7 then -- ifnonnull
+			local branch = string.unpack(">i2", string.char(code[pc+1]) .. string.char(code[pc+2]))
+			table.insert(jumps, pc+branch-1)
+			pc = pc + 2
+		end
+		pc = pc + 1
+	end
+
+	pc = 1
+	while pc <= #code do
+		local op = code[pc]
+		--print(pc .. ": " .. string.format("0x%x", op))
 		for k, v in pairs(jumps) do
-			if v == pc then
-				out = out .. "\n::_" .. tostring(pc) .. "_::"
+			if v+1 == pc then
+				out = out .. "\n::_" .. tostring(v) .. "_::"
 			end
 		end
 		if op == 0x0 then -- nop
@@ -64,7 +100,7 @@ function freqs.compile(method)
 			if op == 0x8 then
 				val = 5
 			end
-			out = out .. "\nthread:pushOperand(types.new('int',"..val..")"
+			out = out .. "\nthread:pushOperand(types.new('int',"..val.."))"
 		elseif op == 0x9 or op == 0xa then -- lconst_<l>
 			error("todo")
 			if op == 0x9 then
@@ -117,7 +153,7 @@ function freqs.compile(method)
 				idx = 3
 			end
 			-- iload_0 doesn't have an if here as "idx" is by default set to 0
-			out = out .. "\nthread:pushOperand(self.currentFrame.localVariables[".. idx+1 .."])"
+			out = out .. "\nthread:pushOperand(thread.currentFrame.localVariables[".. idx+1 .."])"
 		elseif op == 0x16 or op == 0x1e or op == 0x1f or op == 0x20 or op == 0x21 then -- lload and lload_<n>
 			local idx = 0
 			if op == 0x16 then
@@ -152,7 +188,7 @@ function freqs.compile(method)
 			local idx = thread:popOperand()[2]
 			local array = thread:popOperand()
 			thread:pushOperand(array[2].array[idx+1])]]
-		elseif op == 0x34 then -- caload
+		elseif op == 0x33 or op == 0x34 then -- baload and caload
 			out = out .. [[
 
 			local idx = thread:popOperand()[2]
@@ -207,7 +243,7 @@ function freqs.compile(method)
 			local idx = thread:popOperand()[2]
 			local array = thread:popOperand()
 			array[2].array[idx+1] = val]]
-		elseif op == 0x55 then -- castore
+		elseif op == 0x54 or op == 0x55 then -- bastore and castore
 			out = out .. [[
 
 			local val = thread:popOperand()
@@ -334,6 +370,10 @@ function freqs.compile(method)
 			local operand = thread:popOperand()
 			local long = math.floor(operand[2])
 			thread:pushOperand(types.new("long", long))]]
+		elseif op == 0x91 then -- i2b
+			out = out .. [[
+
+			thread:pushOperand(types.new("byte", thread:popOperand()[2]))]]
 		elseif op == 0x99 then -- ifeq
 			local branch = string.unpack(">i2", string.char(code[pc+1]) .. string.char(code[pc+2]))
 			out = out .. [[
@@ -457,11 +497,9 @@ function freqs.compile(method)
 		elseif op == 0xac or op == 0xad or op == 0xb0 then -- ireturn and lreturn and areturn
 			out = out .. [[
 
-			local ref = thread:popOperand()
-			ret = ref
-			break]]
+			ret = thread:popOperand()]]
 		elseif op == 0xb1 then -- return
-			out = out .. "\nbreak"
+			out = out .. "\n"
 		elseif op == 0xb2 then -- getstatic
 			local index = (code[pc+1] << 8) | code[pc+2]
 			local nameAndTypeIndex = class.constantPool[index].nameAndTypeIndex
@@ -504,15 +542,7 @@ function freqs.compile(method)
 			out = out .. [[
 
 			local objectRef = thread:popOperand()
-			local fieldClass = objectRef[2].class[2].class
-			local field = nil
-			for k, v in pairs(fieldClass.fields) do
-				if v.name == "]] .. nat.name.text .. [[" then
-					field = v
-					break
-				end
-			end
-			thread:pushOperand(objectRef[2].object[field.name])]]
+			thread:pushOperand(objectRef[2].object["]] .. nat.name.text .. [["])]]
 			pc = pc + 2
 		elseif op == 0xb5 then -- putfield
 			local index = (code[pc+1] << 8) | code[pc+2]
@@ -522,22 +552,13 @@ function freqs.compile(method)
 
 			local value = thread:popOperand()
 			local objectRef = thread:popOperand()
-			local fieldClass = objectRef[2].class[2].class
-			local field = nil
-			for k, v in pairs(fieldClass.fields) do
-				if v.name == "]] .. nat.name.text .. [[" then
-					field = v
-					break
-				end
-			end
-			objectRef[2].object[field.name] = value]]
+			objectRef[2].object["]] .. nat.name.text .. [["] = value]]
 			pc = pc + 2
 		elseif op == 0xb6 then -- invokevirtual
 			local index = (code[pc+1] << 8) | code[pc+2]
 			local nameAndTypeIndex = class.constantPool[index].nameAndTypeIndex
 			local nat = class.constantPool[nameAndTypeIndex]
 
-			-- temporary / TODO use descriptors
 			local desc = types.readMethodDescriptor(nat.descriptor.text)
 			local argsCount = #desc.params
 			out = out .. [[
@@ -551,7 +572,8 @@ function freqs.compile(method)
 			reverse(args)
 			local cl = ref[2].class[2].class
 			local method, methodClass = findMethod(cl, "]] .. nat.name.text .. "\", \"" .. nat.descriptor.text .. [[")
-			thread:executeMethod(methodClass, method, args)]]
+			local throwable = thread:executeMethod(methodClass, method, args)
+			if throwable then return "throwable", throwable end]]
 			pc = pc + 2
 		elseif op == 0xb7 then -- invokespecial
 			local index = (code[pc+1] << 8) | code[pc+2]
@@ -572,8 +594,8 @@ function freqs.compile(method)
 			table.insert(args, ref)
 			reverse(args)
 			local cl, err = classLoader.loadClass("]] .. classPath .. [[", true)
-			local method, methodClass = findMethod(cl, nat.name.text, nat.descriptor.text)
-			self:executeMethod(methodClass, method, args)]]
+			local method, methodClass = findMethod(cl, "]] .. nat.name.text .. [[", "]] .. nat.descriptor.text .. [[")
+			thread:executeMethod(methodClass, method, args)]]
 			pc = pc + 2
 		elseif op == 0xb8 then -- invokestatic
 			local index = (code[pc+1] << 8) | code[pc+2]
@@ -581,56 +603,57 @@ function freqs.compile(method)
 			local nat = class.constantPool[nameAndTypeIndex]
 			local desc = types.readMethodDescriptor(nat.descriptor.text)
 			local argsCount = #desc.params
+			local classPath = class.constantPool[index].class.name.text
 			out = out .. [[
 
 			local args = {}
 			for i=1, ]] .. argsCount .. [[ do
-				table.insert(args, self:popOperand())
+				table.insert(args, thread:popOperand())
 			end
 			reverse(args)
-			local objectClass, err = classLoader.loadClass(class.constantPool[index].class.name.text, true)
+			local objectClass, err = classLoader.loadClass("]] .. classPath .. [[", true)
 			if not objectClass then
 				error("could not import " .. class.constantPool[index].class.name.text .. ": " .. tostring(err))
 			end
-			local method, methodClass = findMethod(objectClass, nat.name.text, nat.descriptor.text)
-			local throwable = self:executeMethod(methodClass, method, args)
+			local method, methodClass = findMethod(objectClass, "]] .. nat.name.text .. [[", "]] .. nat.descriptor.text .. [[")
+			local throwable = thread:executeMethod(methodClass, method, args)
 			if throwable then
 				return "throwable", throwable
 			end]]
 			pc = pc + 2
 		elseif op == 0xbb then -- new
-			local index = (code[self.pc+1] << 8) | code[self.pc+2]
+			local index = (code[pc+1] << 8) | code[pc+2]
 			local classPath = class.constantPool[index].name.text
-			local objectClass, err = classLoader.loadClass(classPath, true)
+			out = out .. [[
+
+			local objectClass, err = classLoader.loadClass("]] .. classPath .. [[", true)
 			if not objectClass then
 				error("could not import " .. classPath .. ": " .. tostring(err))
 			end
-			local object = self:instantiateClass(objectClass, {}, false)
-			self:pushOperand(object)
-			self.pc = self.pc + 2
+			local object = thread:instantiateClass(objectClass, {}, false)
+			thread:pushOperand(object)
+			]]
+			pc = pc + 2
 		elseif op == 0xbc then -- newarray
 			local atype = code[pc + 1]
 			out = out .. [[
 
 			local count = thread:popOperand()[2]
 			local arr = {}
-			-- TODO: support other types
-			if atype == 5 then -- T_CHAR
-				for i=1,count do
-					table.insert(arr, types.new("char", 0))
-				end
+			]]
+			local varType = ""
+			if atype == 5 then
+				varType = "char"
 			elseif atype == 10 then -- T_INT
-				for i=1,count do
-					table.insert(arr, types.new("int", 0))
-				end
+				varType = "int"
 			elseif atype == 9 then -- T_SHORT
-				for i=1,count do
-					table.insert(arr, types.new("short", 0))
-				end
+				varType = "short"
 			elseif atype == 10 then -- T_FLOAT
-				for i=1,count do
-					table.insert(arr, types.new("float", 0.0))
-				end
+				varType = "float"
+			end
+			out = out .. [[
+			for i=1,count do
+				table.insert(arr, types.new("]] .. varType .. [[", 0))
 			end
 			thread:pushOperand(types.referenceForArray(arr))]]
 			pc = pc + 1
@@ -649,21 +672,22 @@ function freqs.compile(method)
 			local arr = thread:popOperand()
 			thread:pushOperand(types.new("int", #arr[2].array))]]
 		elseif op == 0xc6 then -- ifnull
-			local branch = string.unpack(">i2", string.char(code[self.pc+1]) .. string.char(code[self.pc+2]))
-			local val = self:popOperand()
+			local branch = string.unpack(">i2", string.char(code[pc+1]) .. string.char(code[pc+2]))
+			out = out .. [[
+
+			local val = thread:popOperand()
 			if val.type == "null" then
-				self.pc = self.pc + branch - 1
-			else
-				self.pc = self.pc + 2
-			end
+				goto _]] .. tostring(pc+branch-1) .. [[_
+			end]]
+			pc = pc + 2
 		elseif op == 0xc7 then -- ifnonnull
-			local branch = string.unpack(">i2", string.char(code[self.pc+1]) .. string.char(code[self.pc+2]))
-			local val = self:popOperand()[2]
+			local branch = string.unpack(">i2", string.char(code[pc+1]) .. string.char(code[pc+2]))
+			out = out .. [[
+
+			local val = thread:popOperand()
 			if val.type ~= "null" then
-				self.pc = self.pc + branch - 1
-			else
-				self.pc = self.pc + 2
-			end
+				goto _]] .. tostring(pc+branch-1) .. [[_
+			end]]
 		else
 			error("unknown opcode: 0x" .. string.format("%x", op))
 		end
@@ -672,6 +696,18 @@ function freqs.compile(method)
 	out = out .. [[
 
 	if thread:operandStackDepth() ~= 1 then
+		print("operand stack dump:")
+		local depth = thread:operandStackDepth()
+		for i=1, depth do
+			local val = thread:popOperand()
+			print("- " .. tostring(types.type(val)) .. ": " .. tostring(val[2]))
+			if val[1] == "R" then
+				print("    reference type: " .. val[2].type)
+				if val[2].type == "object" then
+					print("    reference class: " .. val[2].class[2].class.name)
+				end
+			end
+		end
 		error("operand stack was not cleaned before returning!")
 	end
 	thread.pc = thread:popOperand()[2]
@@ -679,21 +715,28 @@ function freqs.compile(method)
 	if ret and thread.currentFrame then
 		thread:pushOperand(ret)
 	end]]
-	print(out)
 	return out
 end
 
 function freqs.onExecute(method)
-	if not method.code.jit then
+	if not method.code.jit and not method.notCompile then
 		if not method.metrics then
 			method.metrics = 0 -- number of times the method got called
 			method.metricsNext = os.clock()+0.001 -- when to check for metrics
 		end
 		method.metrics = method.metrics + 1
 		if os.clock() > method.metricsNext then -- 1 second
-			print(method.class.name .. " " .. method.name .. method.descriptor .. ": " .. method.metrics)
 			if method.metrics > 3 then
-				method.code.jit = load(freqs.compile(method), "JIT of " .. method.class.name .. "." .. method.name .. method.descriptor)
+				--print(method.class.name .. " " .. method.name .. method.descriptor .. ": " .. method.metrics)
+				local code = freqs.compile(method)
+				--print(code)
+				local f, err = load(code, method.class.name .. "." .. method.name .. method.descriptor)
+				if err then
+					--error("error while jit: " .. err)
+					print("could not compile " .. method.class.name .. " " .. method.name .. method.descriptor .. ": " .. err)
+					method.notCompile = true
+				end
+				method.code.jit = f
 			end
 			method.metrics = 0
 			method.metricsNext = os.clock()+0.001

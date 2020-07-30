@@ -1,6 +1,7 @@
 package java.io;
 
-public class FileInputStream implements Closeable {
+public class FileInputStream extends InputStream {
+
 	private FileDescriptor fd;
 	private File file;
 	private int pos;
@@ -10,7 +11,7 @@ public class FileInputStream implements Closeable {
 	}
 
 	public FileInputStream(File file) {
-		this(FileDescriptor.open(file, FileDescriptor.MODE_W));
+		this(FileDescriptor.open(file, FileDescriptor.MODE_R));
 	}
 
 	public FileInputStream(FileDescriptor fd) {
@@ -31,16 +32,21 @@ public class FileInputStream implements Closeable {
 
 	protected void finalize() {
 		try {
-			close();
+			if (fd.valid()) {
+				close();
+			}
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
 	}
 
 	public int read() throws IOException {
-		pos++;
-		return read0();
+		byte[] b = new byte[1];
+		read(b, 0, 1);
+		return (int) b[0];
 	}
 
-	private native int read0();
+	public int read(byte[] bytes, int off, int len) throws IOException {
+		return fd.read(bytes, off, len);
+	}
 }

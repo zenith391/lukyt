@@ -6,17 +6,27 @@ import java.util.*;
 	Java class wrapping a Lua value. Can be used for Lua interoptability.
 **/
 public class LuaObject {
-	private long handle;
+	protected long handle;
 
 	/**
 		The {@link lukyt.LuaObject} corresponding to the Lua variable <code>_ENV</code>
 	**/
-	public static final LuaObject _ENV = new LuaObject(envHandle());
+	public static final LuaObject _ENV  = new LuaObject(envHandle());
+
+	/**
+		The {@link lukyt.LuaObject} corresponding to the Lua primitive <code>false</code>
+	**/
+	public static final LuaObject FALSE = new LuaObject(falseHandle());
+
+	/**
+		The {@link lukyt.LuaObject} corresponding to the Lua primitive <code>true</code>
+	**/
+	public static final LuaObject TRUE  = new LuaObject(trueHandle());
 
 	/**
 		The {@link lukyt.LuaObject} corresponding to the Lua variable <code>_G</code>
 	**/
-	public static final LuaObject _G   = _ENV.get("_G");
+	public static final LuaObject _G    = _ENV.get("_G");
 
 	/**
 		The {@link lukyt.LuaObject} corresponding to Lua <code>nil</code>
@@ -28,6 +38,8 @@ public class LuaObject {
 	private static native long handleFromD(double d);
 	private static native long nilHandle();
 	private static native long envHandle();
+	private static native long falseHandle();
+	private static native long trueHandle();
 
 	/**
 		Cast a String to a LuaObject.
@@ -48,6 +60,10 @@ public class LuaObject {
 	**/
 	public static LuaObject fromDouble(double d) {
 		return new LuaObject(handleFromD(d));
+	}
+
+	public static LuaObject fromBoolean(boolean b) {
+		return b ? TRUE : FALSE;
 	}
 
 	/**
@@ -71,6 +87,8 @@ public class LuaObject {
 			return LuaObject.fromLong(((Integer) o).longValue());
 		} else if (o instanceof String) {
 			return LuaObject.fromString((String) o);
+		} else if (o instanceof Boolean) {
+			return LuaObject.fromBoolean(((Boolean) o).booleanValue());
 		} else {
 			throw new RuntimeException("Could not cast \"" + o.getClass().getName() + "\" to a Lua object.");
 		}
@@ -115,6 +133,16 @@ public class LuaObject {
 	**/
 	public native long asLong();
 	/**
+		Returns this LuaObject as a primitive <code>boolean</code> value.<br/>
+	**/
+	public boolean asBoolean() {
+		if (this.equals(TRUE)) {
+			return true;
+		}
+		return false;
+	}
+
+	/**
 		Returns this LuaObject as a String object.<br/>
 		If the Lua object isn't a <code>string</code>, this returns the result of <code>tostring()</code>.<br/>
 	**/
@@ -133,7 +161,7 @@ public class LuaObject {
 		} else if (type.equals("nil")) {
 			return null;
 		} else if (type.equals("boolean")) {
-			return new Boolean(asString());
+			return new Boolean(asBoolean());
 		} else {
 			throw new RuntimeException("Could not cast \"" + type + "\" to a Java object.");
 		}
@@ -168,6 +196,10 @@ public class LuaObject {
 		long handle = get0(key);
 		if (handle == 0)
 			throw new ChildNotFoundException(key);
+		if (handle == TRUE.handle)
+			return TRUE;
+		else if (handle == FALSE.handle)
+			return FALSE;
 		return new LuaObject(handle);
 	}
 
@@ -236,10 +268,10 @@ public class LuaObject {
 	public boolean isArray() {
 		List<String> keys = keys();
 		for (int i = 0; i < keys.size(); i++) {
-			Long l = Long.parseLong(keys.get(i));
-			if (l == null) {
-				return false;
-			}
+			long l = Long.parseLong(keys.get(i));
+			//if (l == null) {
+			//	return false;
+			//}
 		}
 		return true;
 	}
@@ -285,5 +317,12 @@ public class LuaObject {
 		} else {
 			return lua[0];
 		}
+	}
+
+	public boolean equals(Object o) {
+		if (o instanceof LuaObject) {
+			return handle == ((LuaObject) o).handle;
+		}
+		return false;
 	}
 }

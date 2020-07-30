@@ -21,6 +21,10 @@ public class Class<T> {
 		this.classLoader = classLoader;
 	}
 
+	public ClassLoader getClassLoader() {
+		return classLoader;
+	}
+
 	public <T> T newInstance() {
 		return newClassInstance(ref);
 	}
@@ -31,6 +35,10 @@ public class Class<T> {
 
 	public boolean isEnum() {
 		return isEnum(ref);
+	}
+
+	public boolean desiredAssertionStatus() {
+		return false;
 	}
 
 	private native static <T> T newClassInstance(long ref);

@@ -33,10 +33,9 @@ public class Thread {
 	public Thread(Runnable run, String name) {
 		this();
 		this.run = run;
-		if (name == null) {
-			name = "Thread-" + handle;
+		if (name != null) {
+			setName(name);
 		}
-		setName(name);
 	}
 
 	public Thread(String name) {
@@ -66,6 +65,12 @@ public class Thread {
 	public static void yield() { // calls coroutine.yield()
 		LuaObject coroutine = LuaObject._ENV.get("coroutine");
 		coroutine.executeChild("yield");
+	}
+
+	public static native void sleep(long millis) throws InterruptedException;
+
+	public static void sleep(long millis, int nanos) throws InterruptedException {
+		sleep(millis);
 	}
 
 	public native void start();

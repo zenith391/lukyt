@@ -1,6 +1,6 @@
 #!/bin/sh
 cd src
-export JAVA_COMPILE="/usr/lib/jvm/java-8-openjdk-amd64/bin/javac -Xlint:-options -d ../bin -source 6 -target 6"
-$JAVA_COMPILE java/lang/*.java java/io/*.java java/util/*.java cil/li/oc/*.java
+export JAVA_COMPILE="/usr/lib/jvm/java-8-openjdk-amd64/bin/javac -Xlint:-options -d ../bin -source 8 -target 8"
+$JAVA_COMPILE java/lang/*.java java/io/*.java java/util/*.java cil/li/oc/*.java java/awt/Color.java
 javadoc -keywords -d /usr/local/nginx/html/jd cil.li.oc lukyt
 cd ..

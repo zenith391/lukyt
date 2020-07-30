@@ -5,6 +5,9 @@ local types = require("type")
 
 -- Transforms a Java string to a Lua string
 function native.stringToLua(obj)
+	if obj[2].type == "null" then
+		error("null string")
+	end
 	local chars = obj[2].object["chars"]
 	local array = chars[2].array
 	local str = ""
@@ -30,6 +33,10 @@ function native.luaToString(str, thread)
 	end
 	local object = thread:instantiateClass(objectClass, {types.referenceForArray(array)}, true, "([C)V")
 	return object
+end
+
+function native.byteBufferGet(buf, idx, thread)
+	
 end
 
 return native

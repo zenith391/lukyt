@@ -9,12 +9,12 @@ public abstract class Enum<T extends Enum<T>> {
 		this.name = name;
 		this.ordinal = ordinal;
 	}
-
+	
 	public static <T> T valueOf(Class<T> enumType, String s) {
 		// TODO
 		return null;
 	}
-
+	
 	public final boolean equals(Object o) {
 		return this == o;
 	}

@@ -1,6 +1,6 @@
 package java.io;
 
-public class FileOutputStream implements Closeable {
+public class FileOutputStream extends OutputStream {
 	private FileDescriptor fd;
 
 	public FileOutputStream(String path) {
@@ -25,17 +25,23 @@ public class FileOutputStream implements Closeable {
 
 	protected void finalize() {
 		try {
-			close();
+			if (fd.valid()) {
+				close();
+			}
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
 	}
 
 	public void write(int b) {
-		fd.write(new byte[] {(byte) b});
+		fd.write(new byte[] {(byte) b}, 0, 1);
 	}
 
 	public void write(byte[] b) {
-		fd.write(b);
+		fd.write(b, 0, b.length);
+	}
+
+	public void write(byte[] b, int off, int len) {
+		fd.write(b, off, len);
 	}
 }

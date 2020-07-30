@@ -9,7 +9,7 @@ public class File {
 	private String path;
 
 	public File(String pathname) {
-		this((String) null, pathname);
+		path = pathname;
 	}
 
 	public File(String parent, String child) {

@@ -1,13 +1,13 @@
 package java.nio;
 
-import java.nio.impl.DirectByteBufferImpl;
+import java.nio.impl.*;
 
 public abstract class ByteBuffer {
 
 	protected ByteOrder order;
 
 	public static ByteBuffer allocate(int capacity) {
-		return allocateDirect(capacity);
+		return new ArrayByteBufferImpl(capacity);
 	}
 
 	public static ByteBuffer allocateDirect(int capacity) {
@@ -75,6 +75,19 @@ public abstract class ByteBuffer {
 	}
 
 	public boolean equals(Object o) {
+		if (o instanceof ByteBuffer) {
+			ByteBuffer buf = (ByteBuffer) o;
+			if (buf.capacity() == capacity()) {
+				byte[] array = new byte[buf.capacity()];
+				buf.get(array, 0, buf.capacity());
+				for (int i = 0; i < array.length; i++) {
+					if (get(i) != buf.get(i)) {
+						return false;
+					}
+				}
+				return true;
+			}
+		}
 		return false;
 	}
 

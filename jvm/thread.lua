@@ -47,33 +47,11 @@ function lib:popOperand()
 end
 
 function lib:getLocalVariable(idx)
-	local realIdx = idx
-	--[[local i = 1
-	while i < realIdx-1 do
-		if self.currentFrame.localVariables[i] then
-			local t = types.type(self.currentFrame.localVariables[i])
-			if t == "double" or t == "long" then
-				realIdx = realIdx - 1
-			end
-		end
-		i = i + 1
-	end
-	realIdx = idx -- temp fix]]
-	return self.currentFrame.localVariables[math.max(realIdx, 1)]
+	return self.currentFrame.localVariables[idx]
 end
 
 function lib:setLocalVariable(idx, val)
-	local realIdx = idx
-	--[[for i=1, idx do
-		if self.currentFrame.localVariables[i] then
-			local t = types.type(self.currentFrame.localVariables[i])
-			if t == "double" or t == "long" then
-				realIdx = realIdx - 1
-			end
-		end
-	end
-	realIdx = idx -- temp fix]]
-	self.currentFrame.localVariables[math.max(realIdx, 1)] = val
+	self.currentFrame.localVariables[idx] = val
 end
 
 function lib:pushNewFrame()
@@ -94,7 +72,7 @@ end
 function lib:instantiateException(path, details)
 	local objectClass, err = classLoader.loadClass(path, true)
 	if not objectClass then
-		error("could not import exception " .. path .. ": " .. err)
+		error("could not import exception " .. path .. ": " .. err .. ". Exception was " .. path .. ": " .. details)
 	end
 
 	if details then
@@ -259,17 +237,23 @@ local function reverse(arr)
 	return arr
 end
 
-local function findMethod(class, name, desc)
+local function findMethod(thread, class, name, desc, ogClass)
 	for k, v in pairs(class.methods) do
 		if v.name == name and v.descriptor == desc then
 			return v, class
 		end
 	end
 	if class.superClass then
-		local method = findMethod(class.superClass, name, desc)
-		return method, class.superClass
+		local method, throwable = findMethod(thread, class.superClass, name, desc, ogClass or class)
+		if not method then
+			return nil, throwable
+		else
+			return method, class.superClass
+		end
 	else
-		error("could not find: " .. name .. " with descriptor " .. desc)
+		--error("could not find: " .. name .. " with descriptor " .. desc)
+		local className = (ogClass or class).name:gsub("/", ".")
+		return nil, thread:instantiateException("java/lang/NoSuchMethodError", className .. "." .. name .. desc)
 	end
 end
 lib.findMethod = findMethod
@@ -301,8 +285,13 @@ local function ldc(self, constant)
 	end
 end
 
+local function isnan(n)
+	return n ~= n -- NaN cannot equals itself
+end
+
 function lib:execute(class, code)
 	local op = code[self.pc]
+	--print(self.pc .. "/" .. #code)
 	--printDebug("0x" .. string.format("%x", op) .. " @ 0x" .. string.format("%x", self.pc)) -- only enable for debug
 	if op == 0x0 then -- nop
 	elseif op == 0x1 then -- aconst_null
@@ -413,9 +402,12 @@ function lib:execute(class, code)
 		end
 		-- aload_0 doesn't have an if here as "idx" is by default set to 0
 		self:pushOperand(self:getLocalVariable(idx+1))
-	elseif op == 0x2f or op == 0x32 or op == 0x33 or op == 0x34 then -- laload, aaload, baload and caload
+	elseif op == 0x2e or op == 0x2f or op == 0x32 or op == 0x33 or op == 0x34 then -- iaload, laload, aaload, baload and caload
 		local idx = self:popOperand()[2]
 		local array = self:popOperand()
+		if array[2].type == "null" then
+			return "throwable", self:instantiateException("java/lang/NullPointerException", "array is null")
+		end
 		if idx < 0 then
 			error("negativearrayindex: trying to get array with index " .. idx)
 		elseif idx >= #array[2].array then
@@ -464,7 +456,21 @@ function lib:execute(class, code)
 		end
 		-- astore_0 doesn't have an if here as "idx" is by default set to 0
 		self:setLocalVariable(idx+1, self:popOperand())
-	elseif op == 0x50 or  op == 0x53 or op == 0x54 or op == 0x55 then -- lastore, aastore, bastore and castore
+	elseif op == 0x47 or op == 0x48 or op == 0x49 or op == 0x4a or op == 0x39 then -- dstore and dstore_<n>
+		local idx = 0
+		if op == 0x39 then
+			self.pc = self.pc + 1
+			idx = code[self.pc]
+		elseif op == 0x48 then -- astore_1
+			idx = 1
+		elseif op == 0x49 then -- astore_2
+			idx = 2
+		elseif op == 0x4a then -- astore_3
+			idx = 3
+		end
+		-- dstore_0 doesn't have an if here as "idx" is by default set to 0
+		self:setLocalVariable(idx+1, self:popOperand())
+	elseif op == 0x4f or op == 0x50 or op == 0x53 or op == 0x54 or op == 0x55 then -- iastore, lastore, aastore, bastore and castore
 		local val = self:popOperand()
 		local idx = self:popOperand()[2]
 		local array = self:popOperand()
@@ -501,10 +507,22 @@ function lib:execute(class, code)
 		local second = self:popOperand()[2]
 		local first = self:popOperand()[2]
 		self:pushOperand(types.new("long", first - second))
+	elseif op == 0x67 then -- dsub
+		local second = self:popOperand()[2]
+		local first = self:popOperand()[2]
+		self:pushOperand(types.new("double", first - second))
 	elseif op == 0x68 then -- imul
 		local second = self:popOperand()[2]
 		local first = self:popOperand()[2]
 		self:pushOperand(types.new("int", first * second))
+	elseif op == 0x69 then -- lmul
+		local second = self:popOperand()[2]
+		local first = self:popOperand()[2]
+		self:pushOperand(types.new("long", first * second))
+	elseif op == 0x6a then -- fmul
+		local second = self:popOperand()[2]
+		local first = self:popOperand()[2]
+		self:pushOperand(types.new("float", first * second))
 	elseif op == 0x6b then -- dmul
 		local second = self:popOperand()[2]
 		local first = self:popOperand()[2]
@@ -544,16 +562,33 @@ function lib:execute(class, code)
 			return "throwable", self:instantiateException("java/lang/ArithmeticException", "divide by zero")
 		end
 		self:pushOperand(types.new("long", first - math.floor(first/second) * second))
+	elseif op == 0x72 then -- frem
+		local second = self:popOperand()[2]
+		local first = self:popOperand()[2]
+		local q = math.floor(first / second)
+		self:pushOperand(types.new("float", first - second * q))
+	elseif op == 0x73 then -- drem
+		local second = self:popOperand()[2]
+		local first = self:popOperand()[2]
+		local div = first / second
+		local q = ((div < 0) and math.ceil(div)) or math.floor(div)
+		self:pushOperand(types.new("double", first - second * q))
 	elseif op == 0x74 then -- ineg
 		local value = self:popOperand()[2]
 		self:pushOperand(types.new("int", value * -1))
-	else if op == 0x75 then -- lneg
+	elseif op == 0x75 then -- lneg
 		local value = self:popOperand()[2]
 		self:pushOperand(types.new("long", value * -1))
 	elseif op == 0x75 then -- ishl
 		local second = self:popOperand()[2]
 		local first = self:popOperand()[2]
 		self:pushOperand(types.new("int", first << (second & 0x1F)))
+	elseif op == 0x76 then -- fneg
+		local value = self:popOperand()[2]
+		self:pushOperand(types.new("float", value * -1))
+	elseif op == 0x77 then -- dneg
+		local value = self:popOperand()[2]
+		self:pushOperand(types.new("double", value * -1))
 	elseif op == 0x7a then -- ishr
 		local second = self:popOperand()[2]
 		local first = self:popOperand()[2]
@@ -582,6 +617,8 @@ function lib:execute(class, code)
 		self.pc = self.pc + 2
 	elseif op == 0x85 then -- i2l
 		self:pushOperand(types.new("long", self:popOperand()[2]))
+	elseif op == 0x87 then -- i2d
+		self:pushOperand(types.new("double", self:popOperand()[2]))
 	elseif op == 0x88 then -- l2i
 		self:pushOperand(types.new("int", self:popOperand()[2]))
 	elseif op == 0x8e then -- d2i
@@ -598,6 +635,8 @@ function lib:execute(class, code)
 		end
 		local long = math.floor(operand[2])
 		self:pushOperand(types.new("long", long))
+	elseif op == 0x91 then -- i2b
+		self:pushOperand(types.new("byte", self:popOperand()[2]))
 	elseif op == 0x92 then -- i2c
 		self:pushOperand(types.new("char", self:popOperand()[2]))
 	elseif op == 0x94 then -- lcmp
@@ -608,6 +647,32 @@ function lib:execute(class, code)
 		elseif first < second then
 			self:pushOperand(types.new("int", -1))
 		else
+			self:pushOperand(types.new("int", 0))
+		end
+	elseif op == 0x96 then -- i2s
+		self:pushOperand(types.new("short", self:popOperand()[2]))
+	elseif op == 0x97 then -- dcmpg
+		local val2 = self:popOperand()[2]
+		local val1 = self:popOperand()[2]
+		if val1 > val2 then
+			self:pushOperand(types.new("int", 1))
+		elseif val1 < val2 then
+			self:pushOperand(types.new("int", -1))
+		elseif isnan(val1) or isnan(val2) then
+			self:pushOperand(types.new("int", 1))
+		elseif val1 == val2 then
+			self:pushOperand(types.new("int", 0))
+		end
+	elseif op == 0x98 then -- dcmpl
+		local val2 = self:popOperand()[2]
+		local val1 = self:popOperand()[2]
+		if val1 > val2 then
+			self:pushOperand(types.new("int", 1))
+		elseif val1 < val2 then
+			self:pushOperand(types.new("int", -1))
+		elseif isnan(val1) or isnan(val2) then
+			self:pushOperand(types.new("int", -1))
+		elseif val1 == val2 then
 			self:pushOperand(types.new("int", 0))
 		end
 	elseif op == 0x99 then -- ifeq
@@ -733,6 +798,51 @@ function lib:execute(class, code)
 	elseif op == 0xa7 then -- goto
 		local branch = string.unpack(">i2", string.char(code[self.pc+1]) .. string.char(code[self.pc+2]))
 		self.pc = self.pc + branch - 1
+	elseif op == 0xaa then -- tableswitch
+		local orgAddress = self.pc
+		local padding = 4-((self.pc-1)%4)
+		self.pc = self.pc + padding
+		local codeStr = string.char(table.unpack(code))
+		local default = string.unpack(">i4", codeStr, self.pc)
+		local low = string.unpack(">i4", codeStr, self.pc+4)
+		local high = string.unpack(">i4", codeStr, self.pc+8)
+		self.pc = self.pc + 12
+		local offsets = {}
+		for i=1, high-low+1 do
+			local off = string.unpack(">i4", codeStr, self.pc)
+			table.insert(offsets, off)
+			self.pc = self.pc + 4
+		end
+
+		local index = self:popOperand()[2]
+		if index < low or index > high then
+			self.pc = orgAddress + default - 1
+		else
+			local off = offsets[index-low+1]
+			self.pc = orgAddress + off - 1
+		end
+	elseif op == 0xab then -- lookupswitch
+		local orgAddress = self.pc
+		local padding = 4-((self.pc-1)%4)
+		self.pc = self.pc + padding
+		local codeStr = string.char(table.unpack(code))
+		local default = string.unpack(">i4", codeStr, self.pc)
+		local npairs = string.unpack(">i4", codeStr, self.pc+4)
+		self.pc = self.pc + 8
+		local intpairs = {}
+		for i=1, npairs do
+			local key = string.unpack(">i4", codeStr, self.pc)
+			local off = string.unpack(">i4", codeStr, self.pc+4)
+			intpairs[key] = off
+			self.pc = self.pc + 8
+		end
+
+		local key = self:popOperand()[2]
+		if intpairs[key] then
+			self.pc = orgAddress + intpairs[key] - 1
+		else
+			self.pc = orgAddress + default - 1
+		end
 	elseif op == 0xac or op == 0xad or op == 0xaf or op == 0xb0 then -- ireturn, lreturn, dreturn and areturn
 		local ref = self:popOperand()
 		return ref
@@ -745,7 +855,7 @@ function lib:execute(class, code)
 		local fieldClassPath = class.constantPool[index].class.name.text
 		local fieldClass, err = classLoader.loadClass(fieldClassPath, true)
 		if not fieldClass then
-			error("could not import " .. fieldClassPath .. ": " .. err)
+			return "throwable", self:instantiateException("java/lang/NoClassDefException", fieldClassPath)
 		end
 		local field = nil
 		for k, v in pairs(fieldClass.fields) do
@@ -753,6 +863,10 @@ function lib:execute(class, code)
 				field = v
 				break
 			end
+		end
+		if not field then
+			local className = fieldClass.name:gsub("/", ".")
+			return "throwable", self:instantiateException("java/lang/NoSuchFieldError", className .. "." .. nat.name.text)
 		end
 		self:pushOperand(field.staticValue)
 		self.pc = self.pc + 2
@@ -763,7 +877,7 @@ function lib:execute(class, code)
 		local fieldClassPath = class.constantPool[index].class.name.text
 		local fieldClass, err = classLoader.loadClass(fieldClassPath, true)
 		if not fieldClass then
-			error("could not import " .. fieldClassPath .. ": " .. err)
+			return "throwable", self:instantiateException("java/lang/NoClassDefException", fieldClassPath)
 		end
 		local field = nil
 		for k, v in pairs(fieldClass.fields) do
@@ -771,6 +885,10 @@ function lib:execute(class, code)
 				field = v
 				break
 			end
+		end
+		if not field then
+			local className = fieldClass.name:gsub("/", ".")
+			return "throwable", self:instantiateException("java/lang/NoSuchFieldError", className .. "." .. nat.name.text)
 		end
 		field.staticValue = self:popOperand()
 		self.pc = self.pc + 2
@@ -783,16 +901,12 @@ function lib:execute(class, code)
 		local classPath = fieldConstant.class.name.text
 		local fieldClass, err = classLoader.loadClass(classPath, true)
 		if not fieldClass then
-			error("could not import " .. classPath .. ": " .. err)
+			return "throwable", self:instantiateException("java/lang/NoClassDefException", classPath)
 		end
-		local field = nil
-		for k, v in pairs(fieldClass.fields) do
-			if v.name == nat.name.text then
-				field = v
-				break
-			end
+		if objectRef[2].type == "null" then
+			return "throwable", self:instantiateException("java/lang/NullPointerException", "attempted to get field from null value")
 		end
-		self:pushOperand(objectRef[2].object[field.name])
+		self:pushOperand(objectRef[2].object[nat.name.text])
 		self.pc = self.pc + 2
 	elseif op == 0xb5 then -- putfield
 		local index = (code[self.pc+1] << 8) | code[self.pc+2]
@@ -804,16 +918,12 @@ function lib:execute(class, code)
 		local classPath = fieldConstant.class.name.text
 		local fieldClass, err = classLoader.loadClass(classPath, true)
 		if not fieldClass then
-			error("could not import " .. classPath .. ": " .. err)
+			return "throwable", self:instantiateException("java/lang/NoClassDefException", classPath)
 		end
-		local field = nil
-		for k, v in pairs(fieldClass.fields) do
-			if v.name == nat.name.text then
-				field = v
-				break
-			end
+		if objectRef[2].type == "null" then
+			return "throwable", self:instantiateException("java/lang/NullPointerException", "attempted to set field to null value")
 		end
-		objectRef[2].object[field.name] = value
+		objectRef[2].object[nat.name.text] = value
 		self.pc = self.pc + 2
 	elseif op == 0xb6 then -- invokevirtual
 		local index = (code[self.pc+1] << 8) | code[self.pc+2]
@@ -832,8 +942,26 @@ function lib:execute(class, code)
 		if ref[2].type == "null" then
 			return "throwable", self:instantiateException("java/lang/NullPointerException", "attempted to call method on null value")
 		end
-		local cl = ref[2].class[2].class
-		local method, methodClass = findMethod(cl, nat.name.text, nat.descriptor.text)
+
+		local customClass
+		--print(ref[2].type .. " t: " .. nat.name.text .. " " .. nat.descriptor.text)
+		if ref[2].type == "array" then
+			--if nat.name.text == "clone" then
+			--end
+			local err
+			local classPath = "java/lang/ArrayMethods"
+			customClass, err = classLoader.loadClass(classPath, true)
+			if not customClass then
+				return "throwable", self:instantiateException("java/lang/NoClassDefException", classPath)
+			end
+			nat.descriptor.text = "([Ljava/lang/Object;)[Ljava/lang/Object;"
+		end
+		local cl = customClass or ref[2].class[2].class
+		local method, methodClass = findMethod(self, cl, nat.name.text, nat.descriptor.text)
+		if not method then
+			return "throwable", methodClass
+		end
+		--print(method.class.name)
 		local throwable = self:executeMethod(methodClass, method, args)
 		if throwable then
 			return "throwable", throwable -- re-throw catched exception
@@ -856,9 +984,12 @@ function lib:execute(class, code)
 		local classPath = class.constantPool[index].class.name.text
 		local cl, err = classLoader.loadClass(classPath, true)
 		if not cl then
-			error("could not import " .. classPath .. ": " .. err)
+			return "throwable", self:instantiateException("java/lang/NoClassDefException", classPath)
 		end
-		local method, methodClass = findMethod(cl, nat.name.text, nat.descriptor.text)
+		local method, methodClass = findMethod(self, cl, nat.name.text, nat.descriptor.text)
+		if not method then
+			return "throwable", methodClass
+		end
 		local throwable = self:executeMethod(methodClass, method, args)
 		if throwable then
 			return "throwable", throwable
@@ -876,11 +1007,15 @@ function lib:execute(class, code)
 			table.insert(args, self:popOperand())
 		end
 		reverse(args)
-		local objectClass, err = classLoader.loadClass(class.constantPool[index].class.name.text, true)
+		local classPath = class.constantPool[index].class.name.text
+		local objectClass, err = classLoader.loadClass(classPath, true)
 		if not objectClass then
-			error("could not import " .. class.constantPool[index].class.name.text .. ": " .. tostring(err))
+			return "throwable", self:instantiateException("java/lang/NoClassDefException", classPath)
 		end
-		local method, methodClass = findMethod(objectClass, nat.name.text, nat.descriptor.text)
+		local method, methodClass = findMethod(self, objectClass, nat.name.text, nat.descriptor.text)
+		if not method then
+			return "throwable", methodClass
+		end
 		local throwable = self:executeMethod(methodClass, method, args)
 		if throwable then
 			return "throwable", throwable
@@ -902,10 +1037,13 @@ function lib:execute(class, code)
 		table.insert(args, ref)
 		reverse(args)
 		if ref[2].type == "null" then
-			return "throwable", self:instantiateException("java/lang/NullPointerException", "attempted to call method on null value")
+			return "throwable", self:instantiateException("java/lang/NullPointerException", classPath)
 		end
 		local cl = ref[2].class[2].class
-		local method, methodClass = findMethod(cl, nat.name.text, nat.descriptor.text)
+		local method, methodClass = findMethod(self, cl, nat.name.text, nat.descriptor.text)
+		if not method then
+			return "throwable", methodClass
+		end
 		local throwable = self:executeMethod(methodClass, method, args)
 		if throwable then
 			return "throwable", throwable -- re-throw catched exception
@@ -916,7 +1054,7 @@ function lib:execute(class, code)
 		local classPath = class.constantPool[index].name.text
 		local objectClass, err = classLoader.loadClass(classPath, true)
 		if not objectClass then
-			error("could not import " .. classPath .. ": " .. tostring(err))
+			return "throwable", self:instantiateException("java/lang/NoClassDefException", classPath)
 		end
 		local object = self:instantiateClass(objectClass, {}, false)
 		self:pushOperand(object)
@@ -926,22 +1064,25 @@ function lib:execute(class, code)
 		local count = self:popOperand()[2]
 		local arr = {}
 		-- TODO: support other types
+		local strType = ""
 		if atype == 5 then -- T_CHAR
-			for i=1,count do
-				table.insert(arr, types.new("char", 0))
-			end
-		elseif atype == 10 then -- T_INT
-			for i=1,count do
-				table.insert(arr, types.new("int", 0))
-			end
+			strType = "char"
+		elseif atype == 6 then -- T_FLOAT
+			strType = "float"
+		elseif atype == 7 then -- T_DOUBLE
+			strType = "double"
+		elseif atype == 8 then -- T_BYTE
+			strType = "byte"
 		elseif atype == 9 then -- T_SHORT
-			for i=1,count do
-				table.insert(arr, types.new("short", 0))
-			end
-		elseif atype == 10 then -- T_FLOAT
-			for i=1,count do
-				table.insert(arr, types.new("float", 0.0))
-			end
+			strType = "short"
+		elseif atype == 10 then -- T_INT
+			strType = "int"
+		elseif atype == 11 then -- T_LONG
+			strType = "long"
+		end
+		
+		for i=1, count do
+			table.insert(arr, types.new(strType, 0))
 		end
 		self:pushOperand(types.referenceForArray(arr))
 		self.pc = self.pc + 1
@@ -964,26 +1105,33 @@ function lib:execute(class, code)
 	elseif op == 0xc0 then -- checkcast
 		local index = (code[self.pc+1] << 8) | code[self.pc+2] -- no type checking yet
 		local ref = self:popOperand()
-		local className = class.constantPool[index].name.text
-		local cl = classLoader.loadClass(className, true)
-		if not cl then
-			-- TOOD: throw NoClassDefException
-		end
 		self:pushOperand(ref)
-		if ref[2].type == "array" then
-		end
-		local refClass = ref[2].class[2].class
-		self.pc = self.pc + 2
 		local doThrow = true
-		for k, v in pairs(refClass.interfaces) do
-			if v.name == className then
+		if ref[2].type == "null" then
+			-- do nothing
+			doThrow = false
+		elseif ref[2].type == "array" then
+			-- TODO check
+			doThrow = false
+		else
+			local className = class.constantPool[index].name.text
+			local cl = classLoader.loadClass(className, true)
+			if not cl then
+				print("throw")
+				return "throwable", self:instantiateException("java/lang/NoClassDefException", className)
+			end
+			local refClass = ref[2].class[2].class
+			for k, v in pairs(refClass.interfaces) do
+				if v.name == className then
+					doThrow = false
+					break
+				end
+			end
+			if lib.isSubclassOf(refClass, cl) then
 				doThrow = false
-				break
 			end
 		end
-		if lib.isSubclassOf(refClass, cl) then
-			doThrow = false
-		end
+		self.pc = self.pc + 2
 		if doThrow then
 			error("checkcast failed: todo throw exception")
 		end
@@ -994,6 +1142,7 @@ function lib:execute(class, code)
 		local cl = classLoader.loadClass(className, true)
 		if not cl then
 			-- TOOD: throw NoClassDefException
+			print("NO SUCH CLASS INSTANCEOF")
 		end
 		if ref[2].type == "null" then
 			self:pushOperand(types.new("int", 0))
@@ -1046,6 +1195,32 @@ function lib:execute(class, code)
 		else
 			return "throwable", self:instantiateException("java/lang/IllegalMonitorStateException")
 		end
+	elseif op == 0xc5 then -- multianewarray
+		local index = (code[self.pc+1] << 8) | code[self.pc+2]
+		local constant = class.constantPool[index]
+		--print(constant.name.text)
+		local dimensions = code[self.pc+3]
+
+		local sizes = {}
+		for i=1, dimensions do
+			table.insert(sizes, self:popOperand()[2])
+		end
+		reverse(sizes)
+
+		local function subarray(i, max, counts)
+			local array = {}
+			local count = counts[i]
+			for j=1, count do
+				if i == max then
+					array[j] = types.nullReference()
+				else
+					array[j] = subarray(i+1, max, counts)
+				end
+			end
+			return types.referenceForArray(array)
+		end
+		self:pushOperand(subarray(1, dimensions, sizes))
+		self.pc = self.pc + 3
 	elseif op == 0xc6 then -- ifnull
 		local branch = string.unpack(">i2", string.char(code[self.pc+1]) .. string.char(code[self.pc+2]))
 		local val = self:popOperand()[2]
@@ -1063,8 +1238,7 @@ function lib:execute(class, code)
 			self.pc = self.pc + 2
 		end
 	else
-		error("unknown opcode: 0x" .. string.format("%x", op))
-	end
+		error("unknown opcode: 0x" .. string.format("%x", op) .. " (pc = " ..  self.pc .. ")")
 	end
 	return true
 end
@@ -1120,7 +1294,7 @@ function lib:instantiateClass(class, parameters, doInit, initDescriptor)
 
 	setmetatable(object, {
 		__gc = function()
-			mainThread:executeMethod(class, findMethod(class, "finalize", "()V"), {object})
+			mainThread:executeMethod(class, findMethod(self, class, "finalize", "()V"), {object})
 		end
 	})
 

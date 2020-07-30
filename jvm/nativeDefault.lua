@@ -5,13 +5,7 @@ local types = require("type")
 local classLoader = require("classLoader")
 local internedStrings = {}
 
-function java_io_ConsolePrintStream_print(class, method, thread, args)
-	if not args[2] then
-		error("invalid args")
-	end
-	io.stdout:write(native.stringToLua(args[2]))
-end
-
+-- Deprecated
 function java_io_ConsoleInputStream_read(class, method, thread, args)
 	local ok, result = pcall(function()
 		return types.new("int", string.byte(io.read(1)))
@@ -23,21 +17,149 @@ function java_io_ConsoleInputStream_read(class, method, thread, args)
 	end
 end
 
+function java_lang_StringBuilder_append(class, method, thread, args)
+	local this = args[1]
+	local array = args[2]
+	local chars = this[2].object.chars
+	local arrayArray = array[2].array
+	local charsArray = chars[2].array
+	for i=1, #arrayArray do
+		charsArray[#charsArray+1] = arrayArray[i]
+	end
+	return this
+end
+
+-- I/O functions
+function java_io_FileDescriptor_openStandard(class, method, thread, args)
+	local this = args[1]
+	local fd = args[2][2]
+
+	local handle = nil
+	if fd == 0 then
+		handle = io.stdin
+	elseif fd == 1 then
+		handle = io.stdout
+	elseif fd == 2 then
+		handle = io.stderr
+	else
+		return types.new("byte", 0) -- false
+	end
+	local handleObj = types.new("long", 1)
+	handleObj.io = handle
+	this[2].object.handle = handleObj
+	return types.new("byte", 1) -- true
+end
+
+function java_io_FileDescriptor_open(class, method, thread, args)
+	local this = args[1]
+	local path = native.stringToLua(args[2])
+	local mode = args[3][2]
+	local modeStr
+
+	local handle = nil
+	if mode == 0 then
+		modeStr = "r"
+	elseif mode == 1 then
+		modeStr = "w"
+	elseif mode == 2 then
+		modeStr = "w+"
+	else
+		return types.new("byte", 0) -- false
+	end
+	local handle, err = io.open(path, modeStr)
+	if err then
+		print("file error: " .. err)
+		return types.new("byte", 0) -- false
+	end
+	local handleObj = types.new("long", 1)
+	handleObj.io = handle
+	this[2].object.handle = handleObj
+	return types.new("byte", 1) -- true
+end
+
+function java_io_FileDescriptor_write(class, method, thread, args)
+	local this = args[1]
+	local handleObj = this[2].object.handle
+	local handle = handleObj.io
+	local array = args[2][2]
+	local off = args[3][2]
+	local len = args[4][2]
+
+	local str = ""
+	for i=1, len do
+		local i = off + i
+		local byte = array.array[i]
+		if not byte then
+			error("out of bounds: " .. i) -- todo throw exception
+		end
+		str = str .. string.char(byte[2])
+	end
+	handle:write(str)
+end
+
+function java_io_FileDescriptor_close(class, method, thread, args)
+	local this = args[1]
+	local handleObj = this[2].object.handle
+	local handle = handleObj.io
+	handle:close()
+	this[2].object.handle = types.new("long", 0)
+end
+
+function java_io_FileDescriptor_read(class, method, thread, args)
+	local this = args[1]
+	local handleObj = this[2].object.handle
+	local handle = handleObj.io
+	local array = args[2][2]
+	local off = args[3][2]
+	local len = args[4][2]
+
+	local str = handle:read(len)
+	if not str then
+		return types.new("int", -1)
+	end
+	for i=1, #str do
+		local i = off + i
+		if not array.array[i] then
+			error("out of bounds") -- todo throw exception
+		end
+		array.array[i] = types.new("byte", string.byte(str:sub(i, i)))
+	end
+	return types.new("int", #str)
+end
+
+function java_io_FileDescriptor_size(class, method, thread, args)
+	local this = args[1]
+	local handleObj = this[2].object.handle
+	local handle = handleObj.io
+
+	local curPos = handle:seek()
+	local size, err = handle:seek("end")
+	if not size then -- prob tried to get size of a standard stream
+		return types.new("int", 1)
+	end
+	handle:seek("set", curPos)
+	return types.new("int", size)
+end
+
 function java_lang_System_arraycopy(class, method, thread, args)
-	local src = args[1][2]
+	local src = args[1][2].array
 	local srcPos = args[2][2]
-	local dest = args[3][2]
+	local dest = args[3][2].array
 	local destPos = args[4][2]
 	local length = args[5][2]
-	if src.type ~= "array" then
+	if args[1][2].type ~= "array" then
 		error("src is not an array!")
-	elseif dest.type ~= "array" then
+	elseif args[3][2].type ~= "array" then
 		error("dest is not an array!")
 	end
 
 	for i=1,length do
-		dest.array[i+destPos] = src.array[i+srcPos]
+		dest[i+destPos] = src[i+srcPos]
 	end
+end
+
+function java_lang_Math_cos_native(class, method, thread, args)
+	return types.new("double", math.cos(args[1][2]))
 end
 
 function java_lang_Object_hashCode(class, method, thread, args)
@@ -125,6 +247,14 @@ function java_lang_String_intern(class, method, thread, args)
 	return this
 end
 
+function java_lang_String_valueOf(class, method, thread, args)
+	local val = args[1]
+	if val[1] == "D" then
+		local num = val[2]
+		return native.luaToString(tostring(num), thread)
+	end
+end
+
 function java_lang_Object_newClass(class, method, thread, args)
 	local this = args[1][2]
 	local thisClass = this.class[2].class
@@ -143,6 +273,18 @@ function lukyt_LuaObject_envHandle(class, method, thread, args)
 	return t
 end
 
+function lukyt_LuaObject_trueHandle(class, method, thread, args)
+	local t = types.new("long", 3)
+	t._lua = true
+	return t
+end
+
+function lukyt_LuaObject_falseHandle(class, method, thread, args)
+	local t = types.new("long", 2)
+	t._lua = false
+	return t
+end
+
 function lukyt_LuaObject_nilHandle(class, method, thread, args)
 	local t = types.new("long", 1)
 	t._lua = nil
@@ -153,7 +295,14 @@ function lukyt_LuaObject_get0(class, method, thread, args)
 	local handle = args[1][2].object.handle
 	local key = native.stringToLua(args[2])
 	if handle._lua[key] then
-		local t = types.new("long", 1)
+		local v = handle._lua[key]
+		local handleId = 1
+		if v == false then
+			handleId = 2
+		elseif v == true then
+			handleId = 3
+		end
+		local t = types.new("long", handleId)
 		t._lua = handle._lua[key]
 		return t
 	end
@@ -230,19 +379,26 @@ function java_lang_Thread_initNewHandle(class, method, thread, args)
 	local t = types.new("long", th.id)
 	t._thread = th
 	th._cl = class
-	th._method = require("thread").findMethod(args[1][2].class[2].class, "run", "()V")
+	th._method = require("thread").findMethod(thread, args[1][2].class[2].class, "run", "()V")
 	th._args = {args[1]}
 	th.coroutine = coroutine.create(require("thread").executeMethod)
 	th.coroutineStarted = true
 	return t
 end
 
-function java_lang_getMainThreadHandle(class, method, thread, args)
-	os.exit(0)
+function java_lang_Thread_getMainThreadHandle(class, method, thread, args)
+	error("not yet main thread handle")
 end
 
 function java_lang_Thread_start(class, method, thread, args)
 	local th = args[1][2].object.handle._thread
-	print("start thread")
 	table.insert(runningThreads, th)
+end
+
+function java_lang_Thread_sleep(class, method, thread, args)
+	local millis = args[1][2]
+	local time = os.time() + (millis / 1000)
+	while time < os.time() do
+		coroutine.yield()
+	end
 end

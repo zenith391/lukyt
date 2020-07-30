@@ -262,10 +262,10 @@ local function readFields(stream, constantPool)
 		local staticValue = types.nullReference()
 		if attributes["ConstantValue"] then
 			local value = getConstantValue(constantPool, attributes["ConstantValue"])
-			if value.type == "float" or value.type == "integer" or value.type == "long" or value.type == "double" then
-				staticValue = types.new(value.type, value)
-			elseif value.type == "string" then
+			if value.type == "string" or value.type == "String" then
 				staticValue = {"defer", value.text.text} -- the String will be instanced in the thread that initializes the class
+			else
+				staticValue = types.new(value.type, value)
 			end
 		end
 		table.insert(fields, {
@@ -431,8 +431,8 @@ function lib.read(stream)
 	local minor = readU2(stream)
 	local major = readU2(stream)
 	printDebug("Class Version: " .. major .. "." .. minor)
-	if major > 50 then
-		error("unsupported class version, Lukyt supports class files up to Java 6")
+	if major > 52 then
+		error("unsupported class version, Lukyt supports class files up to Java 8")
 	end
 	local constantPools = readConstantPool(stream)
 

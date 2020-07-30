@@ -1,5 +1,5 @@
 import java.io.IOException;
-import lukyt.OS;
+import lukyt.Os;
 
 public class JavaShell {
 
@@ -56,7 +56,7 @@ public class JavaShell {
 					throw new RuntimeException();
 				} else {
 					//throw new CommandNotFoundException(str);
-					OS.execute(str);
+					Os.execute(str);
 				}
 			} catch (CommandNotFoundException e) {
 				System.err.println("CommandNotFoundException: " + e.getMessage());

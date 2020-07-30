@@ -14,10 +14,12 @@ public class StringBuffer {
 
 	public StringBuffer append(char[] chars) {
 		int orgLength = this.chars.length;
-		char[] newChars = new char[orgLength + chars.length];
-		System.arraycopy(this.chars, 0, newChars, 0, orgLength);
-		System.arraycopy(chars, 0, newChars, orgLength, chars.length);
-		this.chars = newChars;
+		if (this.chars.length < this.chars.length + chars.length) {
+			char[] newChars = new char[orgLength + chars.length];
+			System.arraycopy(this.chars, 0, newChars, 0, orgLength);
+			this.chars = newChars;
+		}
+		System.arraycopy(chars, 0, this.chars, orgLength, chars.length);
 		return this;
 	}
 
