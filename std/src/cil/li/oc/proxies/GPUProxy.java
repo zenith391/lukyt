@@ -3,6 +3,9 @@ package cil.li.oc.proxies;
 import cil.li.oc.*;
 import lukyt.*;
 
+/**
+	Component proxy of a GPU.
+**/
 public class GPUProxy extends ComponentProxy {
 	private LuaObject o;
 
@@ -27,5 +30,9 @@ public class GPUProxy extends ComponentProxy {
 
 	public String getAddress() {
 		return o.get("address").asString();
+	}
+
+	public String getType() {
+		return "gpu";
 	}
 }

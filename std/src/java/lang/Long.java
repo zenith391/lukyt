@@ -35,7 +35,8 @@ public final class Long extends Number {
 		long l = 0;
 		char sign = s.charAt(0);
 		boolean hasSign = sign == '+' || sign == '-';
-		for (int i = s.length()-1; i > hasSign ? 1 : 0; i--) {
+		int start = hasSign ? 1 : 0;
+		for (int i = s.length()-1; i > start; i--) {
 			char ch = s.charAt(i);
 			long digit = toDigit(ch, radix);
 			if (digit == -1 || digit > radix) {
